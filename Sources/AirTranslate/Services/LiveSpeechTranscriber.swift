@@ -26,6 +26,8 @@ final class LiveSpeechTranscriber: @unchecked Sendable {
     private var analyzeTask: Task<Void, Never>?
     private var resultTasks: [Task<Void, Never>] = []
     private var reservedLocales: [Locale] = []
+    private let stateLock = NSLock()
+    private var isPaused = false
 
     func start(languages: [LanguageOption]) async throws {
         let authorized = await requestAuthorization()
@@ -96,6 +98,11 @@ final class LiveSpeechTranscriber: @unchecked Sendable {
     }
 
     func append(_ sampleBuffer: CMSampleBuffer) {
+        stateLock.lock()
+        let isPaused = isPaused
+        stateLock.unlock()
+
+        guard !isPaused else { return }
         guard let inputContinuation,
               let pcmBuffer = Self.pcmBuffer(from: sampleBuffer, format: audioFormat)
         else {
@@ -105,7 +112,14 @@ final class LiveSpeechTranscriber: @unchecked Sendable {
         inputContinuation.yield(AnalyzerInput(buffer: pcmBuffer))
     }
 
+    func setPaused(_ isPaused: Bool) {
+        stateLock.lock()
+        self.isPaused = isPaused
+        stateLock.unlock()
+    }
+
     func stop() {
+        setPaused(false)
         inputContinuation?.finish()
         inputContinuation = nil
         analyzeTask?.cancel()

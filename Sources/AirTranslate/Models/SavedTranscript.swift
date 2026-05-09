@@ -1,32 +1,33 @@
 import Foundation
 
-struct SavedTranscript: Codable, Identifiable, Equatable {
-    let id: UUID
+struct SavedTranscript: Identifiable, Equatable {
+    let id: String
     var title: String
     var sourceText: String
-    var translatedText: String
-    let sourceLanguageID: String
-    let targetLanguageID: String
-    let createdAt: Date
     var updatedAt: Date
 
     init(
-        id: UUID = UUID(),
-        title: String,
+        fileName: String,
         sourceText: String,
-        translatedText: String,
-        sourceLanguageID: String,
-        targetLanguageID: String,
-        createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date
     ) {
-        self.id = id
-        self.title = title
+        self.id = fileName
+        self.title = SavedTranscript.title(from: sourceText, fallback: fileName)
         self.sourceText = sourceText
-        self.translatedText = translatedText
-        self.sourceLanguageID = sourceLanguageID
-        self.targetLanguageID = targetLanguageID
-        self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+
+    private static func title(from text: String, fallback: String) -> String {
+        let title = text
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let title, !title.isEmpty else {
+            return fallback.replacingOccurrences(of: ".txt", with: "")
+        }
+
+        return String(title.prefix(48))
     }
 }

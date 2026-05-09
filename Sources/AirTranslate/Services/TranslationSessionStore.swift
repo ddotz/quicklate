@@ -3,26 +3,46 @@ import AppKit
 import Foundation
 import Observation
 
+private enum SettingsKey {
+    static let sourceLanguageID = "sourceLanguageID"
+    static let targetLanguageID = "targetLanguageID"
+    static let selectedModelID = "selectedModelID"
+    static let isDubbingEnabled = "isDubbingEnabled"
+    static let isTranscriptLintEnabled = "isTranscriptLintEnabled"
+}
+
 @Observable
 @MainActor
 final class TranslationSessionStore {
     var isRunning = false
-    var isDubbingEnabled = false
-    var sourceLanguage = LanguageOption.supported[0]
-    var targetLanguage = LanguageOption.supported[1]
-    var selectedModel = IntelligenceModel.appleSystem
+    var isPaused = false
+    var isDubbingEnabled = false {
+        didSet { persistSelectedSettings() }
+    }
+    var sourceLanguage = LanguageOption.supported[0] {
+        didSet { persistSelectedSettings() }
+    }
+    var targetLanguage = LanguageOption.supported[1] {
+        didSet { persistSelectedSettings() }
+    }
+    var selectedModel = IntelligenceModel.appleSystem {
+        didSet { persistSelectedSettings() }
+    }
+    var isTranscriptLintEnabled = false {
+        didSet { persistSelectedSettings() }
+    }
     var statusMessage = AppText.ready
     var lines: [CaptionLine] = []
     var savedTranscripts: [SavedTranscript] = []
-    var selectedSavedTranscriptID: UUID?
-    var savedDraftTitle = ""
+    var selectedSavedTranscriptID: String?
     var savedDraftSourceText = ""
-    var savedDraftTranslatedText = ""
 
     private let capture = SystemAudioCapture()
     private let transcriber = LiveSpeechTranscriber()
     private let translator = AppleTranslationService()
     private let speaker = AVSpeechSynthesizer()
+    private let spellChecker = NSSpellChecker.shared
+    private let spellDocumentTag = NSSpellChecker.uniqueSpellDocumentTag()
     private var audioSampleCount = 0
     private var latestAudioLevel: Float?
     private var lastRecognizedText = ""
@@ -35,8 +55,12 @@ final class TranslationSessionStore {
     private var pendingParagraphBreakBeforePartial = false
     private var pendingTranslationSourceText = ""
     private var translatedSegmentsBySource: [String: String] = [:]
+    private var activeAutosaveTranscriptID: String?
+    private var activeAutosaveSourceText = ""
+    private var isRestoringSelectedSettings = false
 
     init() {
+        restoreSelectedSettings()
         capture.delegate = self
         transcriber.delegate = self
         loadSavedTranscripts()
@@ -45,6 +69,10 @@ final class TranslationSessionStore {
     func start() {
         guard !isRunning else { return }
 
+        activeAutosaveTranscriptID = nil
+        activeAutosaveSourceText = ""
+        isPaused = false
+        transcriber.setPaused(false)
         isRunning = true
         statusMessage = AppText.checkingScreenPermission
 
@@ -68,6 +96,9 @@ final class TranslationSessionStore {
     func stop() {
         guard isRunning else { return }
 
+        flushPendingTranscriptSave()
+        isPaused = false
+        transcriber.setPaused(false)
         isRunning = false
         statusMessage = AppText.stopped
         audioSampleCount = 0
@@ -88,6 +119,31 @@ final class TranslationSessionStore {
         }
     }
 
+    func pause() {
+        guard isRunning, !isPaused else { return }
+
+        transcriptCleanupTask?.cancel()
+        transcriptCleanupTask = nil
+        commitCurrentPartial()
+        organizeCurrentTranscript(sourceTextOverride: visibleTranscript())
+        transcriber.setPaused(true)
+        isPaused = true
+        statusMessage = AppText.paused
+    }
+
+    func resume() {
+        guard isRunning, isPaused else { return }
+
+        transcriber.setPaused(false)
+        isPaused = false
+        lastRecognitionAt = Date()
+        statusMessage = AppText.listeningForSpeech
+    }
+
+    func prepareForTermination() {
+        flushPendingTranscriptSave()
+    }
+
     func openPrivacySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else {
             return
@@ -96,46 +152,27 @@ final class TranslationSessionStore {
         NSWorkspace.shared.open(url)
     }
 
+    func openTranscriptsFolder() {
+        do {
+            try FileManager.default.createDirectory(
+                at: transcriptsDirectoryURL,
+                withIntermediateDirectories: true
+            )
+            NSWorkspace.shared.open(transcriptsDirectoryURL)
+        } catch {
+            statusMessage = AppText.saveLibraryFailed(error.localizedDescription)
+        }
+    }
+
     var languageSummary: String {
         AppText.languageSummary(source: sourceLanguage.localizedTitle, target: targetLanguage.localizedTitle)
     }
 
-    var canSaveCurrentTranscript: Bool {
-        lines.contains { !$0.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-    }
-
-    func saveCurrentTranscript() {
-        let sourceText = lines
-            .map(\.sourceText)
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !sourceText.isEmpty else { return }
-
-        let translatedText = lines
-            .map(\.translatedText)
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = transcriptTitle(from: sourceText)
-        let transcript = SavedTranscript(
-            title: title,
-            sourceText: sourceText,
-            translatedText: translatedText,
-            sourceLanguageID: sourceLanguage.id,
-            targetLanguageID: targetLanguage.id
-        )
-
-        savedTranscripts.insert(transcript, at: 0)
-        selectSavedTranscript(transcript.id)
-        persistSavedTranscripts()
-    }
-
-    func selectSavedTranscript(_ id: UUID) {
+    func selectSavedTranscript(_ id: String) {
         guard let transcript = savedTranscripts.first(where: { $0.id == id }) else { return }
 
         selectedSavedTranscriptID = id
-        savedDraftTitle = transcript.title
         savedDraftSourceText = transcript.sourceText
-        savedDraftTranslatedText = transcript.translatedText
     }
 
     func saveSelectedTranscriptEdits() {
@@ -145,25 +182,30 @@ final class TranslationSessionStore {
             return
         }
 
-        savedTranscripts[index].title = savedDraftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if savedTranscripts[index].title.isEmpty {
-            savedTranscripts[index].title = transcriptTitle(from: savedDraftSourceText)
-        }
-        savedTranscripts[index].sourceText = savedDraftSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
-        savedTranscripts[index].translatedText = savedDraftTranslatedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        savedTranscripts[index].updatedAt = Date()
-        persistSavedTranscripts()
+        let sourceText = savedDraftSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sourceText.isEmpty else { return }
+
+        let updatedAt = Date()
+        guard writeTranscriptText(sourceText, fileName: selectedSavedTranscriptID) else { return }
+        savedTranscripts[index] = SavedTranscript(
+            fileName: selectedSavedTranscriptID,
+            sourceText: sourceText,
+            updatedAt: updatedAt
+        )
+        sortSavedTranscripts()
     }
 
     func deleteSelectedTranscript() {
         guard let selectedSavedTranscriptID else { return }
 
         savedTranscripts.removeAll { $0.id == selectedSavedTranscriptID }
+        try? FileManager.default.removeItem(at: transcriptURL(fileName: selectedSavedTranscriptID))
+        if activeAutosaveTranscriptID == selectedSavedTranscriptID {
+            activeAutosaveTranscriptID = nil
+            activeAutosaveSourceText = ""
+        }
         self.selectedSavedTranscriptID = nil
-        savedDraftTitle = ""
         savedDraftSourceText = ""
-        savedDraftTranslatedText = ""
-        persistSavedTranscripts()
     }
 
     private func startCaptioners() async throws {
@@ -174,47 +216,185 @@ final class TranslationSessionStore {
         transcriber.stop()
     }
 
+    private func restoreSelectedSettings() {
+        isRestoringSelectedSettings = true
+        defer { isRestoringSelectedSettings = false }
+
+        let defaults = UserDefaults.standard
+        if let sourceLanguageID = defaults.string(forKey: SettingsKey.sourceLanguageID),
+           let language = LanguageOption.supported.first(where: { $0.id == sourceLanguageID }) {
+            sourceLanguage = language
+        }
+        if let targetLanguageID = defaults.string(forKey: SettingsKey.targetLanguageID),
+           let language = LanguageOption.supported.first(where: { $0.id == targetLanguageID }) {
+            targetLanguage = language
+        }
+        if let modelID = defaults.string(forKey: SettingsKey.selectedModelID),
+           let model = IntelligenceModel(rawValue: modelID) {
+            selectedModel = model
+        }
+        if defaults.object(forKey: SettingsKey.isDubbingEnabled) != nil {
+            isDubbingEnabled = defaults.bool(forKey: SettingsKey.isDubbingEnabled)
+        }
+        if defaults.object(forKey: SettingsKey.isTranscriptLintEnabled) != nil {
+            isTranscriptLintEnabled = defaults.bool(forKey: SettingsKey.isTranscriptLintEnabled)
+        }
+    }
+
+    private func persistSelectedSettings() {
+        guard !isRestoringSelectedSettings else { return }
+
+        let defaults = UserDefaults.standard
+        defaults.set(sourceLanguage.id, forKey: SettingsKey.sourceLanguageID)
+        defaults.set(targetLanguage.id, forKey: SettingsKey.targetLanguageID)
+        defaults.set(selectedModel.id, forKey: SettingsKey.selectedModelID)
+        defaults.set(isDubbingEnabled, forKey: SettingsKey.isDubbingEnabled)
+        defaults.set(isTranscriptLintEnabled, forKey: SettingsKey.isTranscriptLintEnabled)
+    }
+
     private func loadSavedTranscripts() {
         do {
-            let data = try Data(contentsOf: savedTranscriptsURL)
-            savedTranscripts = try JSONDecoder().decode([SavedTranscript].self, from: data)
+            try FileManager.default.createDirectory(
+                at: transcriptsDirectoryURL,
+                withIntermediateDirectories: true
+            )
+            let fileURLs = try FileManager.default.contentsOfDirectory(
+                at: transcriptsDirectoryURL,
+                includingPropertiesForKeys: [.contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            )
+            savedTranscripts = fileURLs
+                .filter { $0.pathExtension == "txt" }
+                .compactMap { fileURL in
+                    guard let text = try? String(contentsOf: fileURL, encoding: .utf8) else {
+                        return nil
+                    }
+                    let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey])
+                    return SavedTranscript(
+                        fileName: fileURL.lastPathComponent,
+                        sourceText: text.trimmingCharacters(in: .whitespacesAndNewlines),
+                        updatedAt: values?.contentModificationDate ?? Date.distantPast
+                    )
+                }
+            sortSavedTranscripts()
         } catch {
             savedTranscripts = []
         }
     }
 
-    private func persistSavedTranscripts() {
+    private func stageTranscriptForSave(_ sourceText: String) {
+        let sourceText = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sourceText.isEmpty else { return }
+
+        activeAutosaveSourceText = sourceText
+    }
+
+    private func flushPendingTranscriptSave() {
+        let sourceText = activeAutosaveSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sourceText.isEmpty else { return }
+
+        let updatedAt = Date()
+        let fileName = activeAutosaveTranscriptID ?? makeTranscriptFileName(for: sourceText, date: updatedAt)
+        guard writeTranscriptText(sourceText, fileName: fileName) else { return }
+        activeAutosaveTranscriptID = nil
+        activeAutosaveSourceText = ""
+        upsertSavedTranscript(fileName: fileName, sourceText: sourceText, updatedAt: updatedAt)
+    }
+
+    @discardableResult
+    private func writeTranscriptText(_ text: String, fileName: String) -> Bool {
         do {
-            let url = savedTranscriptsURL
             try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(),
+                at: transcriptsDirectoryURL,
                 withIntermediateDirectories: true
             )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(savedTranscripts)
-            try data.write(to: url, options: .atomic)
+            try text.write(
+                to: transcriptURL(fileName: fileName),
+                atomically: true,
+                encoding: .utf8
+            )
+            return true
         } catch {
             statusMessage = AppText.saveLibraryFailed(error.localizedDescription)
+            return false
         }
     }
 
-    private var savedTranscriptsURL: URL {
+    private func upsertSavedTranscript(fileName: String, sourceText: String, updatedAt: Date) {
+        let transcript = SavedTranscript(
+            fileName: fileName,
+            sourceText: sourceText,
+            updatedAt: updatedAt
+        )
+
+        if let index = savedTranscripts.firstIndex(where: { $0.id == fileName }) {
+            savedTranscripts[index] = transcript
+        } else {
+            savedTranscripts.insert(transcript, at: 0)
+        }
+
+        if selectedSavedTranscriptID == fileName {
+            savedDraftSourceText = sourceText
+        }
+        sortSavedTranscripts()
+    }
+
+    private func sortSavedTranscripts() {
+        savedTranscripts.sort { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var transcriptsDirectoryURL: URL {
         let supportDirectory = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
         return supportDirectory
             .appendingPathComponent("AirTranslate", isDirectory: true)
-            .appendingPathComponent("saved-transcripts.json")
+            .appendingPathComponent("Transcripts", isDirectory: true)
     }
 
-    private func transcriptTitle(from text: String) -> String {
-        let firstLine = text
+    private func transcriptURL(fileName: String) -> URL {
+        transcriptsDirectoryURL.appendingPathComponent(fileName)
+    }
+
+    private func makeTranscriptFileName(for sourceText: String, date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm"
+        let timestamp = formatter.string(from: date)
+        let baseName = "\(timestamp)_\(shortFileTitle(from: sourceText))"
+        var fileName = "\(baseName).txt"
+        var suffix = 2
+
+        while FileManager.default.fileExists(atPath: transcriptURL(fileName: fileName).path) {
+            fileName = "\(baseName)-\(suffix).txt"
+            suffix += 1
+        }
+
+        return fileName
+    }
+
+    private func shortFileTitle(from sourceText: String) -> String {
+        let firstLine = sourceText
             .split(separator: "\n", omittingEmptySubsequences: true)
             .first
             .map(String.init) ?? AppText.untitledTranscript
-        return String(firstLine.prefix(48))
+        let allowedCharacters = CharacterSet.letters
+            .union(.decimalDigits)
+            .union(.whitespacesAndNewlines)
+            .union(CharacterSet(charactersIn: "-_"))
+        let readableText = String(firstLine.unicodeScalars.map { scalar in
+            allowedCharacters.contains(scalar) ? Character(scalar) : " "
+        })
+        let sanitized = readableText
+            .replacingOccurrences(of: #"\s+"#, with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: ".-_ "))
+
+        guard !sanitized.isEmpty else {
+            return AppText.untitledTranscript.replacingOccurrences(of: " ", with: "-")
+        }
+
+        return String(sanitized.prefix(32))
     }
 
     private func appendCaption(
@@ -223,7 +403,7 @@ final class TranslationSessionStore {
         confidence _: Double,
         isFinal: Bool
     ) async {
-        guard isRunning else { return }
+        guard isRunning, !isPaused else { return }
         guard sourceText != lastRecognizedText || isFinal != lastRecognizedWasFinal else { return }
         guard let direction = translationDirection(for: sourceText, recognizedLanguage: recognizedLanguage) else { return }
 
@@ -269,6 +449,7 @@ final class TranslationSessionStore {
             lines.append(line)
         }
 
+        stageTranscriptForSave(line.sourceText)
         requestTranslation(for: line, source: direction.source, target: direction.target)
     }
 
@@ -351,7 +532,7 @@ final class TranslationSessionStore {
         }
     }
 
-    private func organizeCurrentTranscript() {
+    private func organizeCurrentTranscript(sourceTextOverride: String? = nil) {
         guard isRunning,
               let currentLineID,
               let index = lines.firstIndex(where: { $0.id == currentLineID })
@@ -360,7 +541,12 @@ final class TranslationSessionStore {
         }
 
         let line = lines[index]
-        let organizedSourceText = organizeTranscript(line.sourceText, language: sourceLanguage)
+        let sourceText = sourceTextOverride ?? line.sourceText
+        let organizedSourceText = organizeTranscript(
+            sourceText,
+            language: sourceLanguage,
+            appliesLint: isTranscriptLintEnabled
+        )
         let organizedTranslatedText = organizeTranslatedText(line.translatedText)
         let sourceChanged = organizedSourceText != line.sourceText
         let translationChanged = organizedTranslatedText != line.translatedText
@@ -390,6 +576,7 @@ final class TranslationSessionStore {
         )
 
         let updatedLine = lines[index]
+        stageTranscriptForSave(updatedLine.sourceText)
         if updatedLine.translatedSourceText != updatedLine.sourceText {
             requestTranslation(for: updatedLine, source: sourceLanguage, target: targetLanguage)
         }
@@ -401,8 +588,19 @@ final class TranslationSessionStore {
     }
 
     private func organizeTranscript(_ text: String, language: LanguageOption) -> String {
+        organizeTranscript(text, language: language, appliesLint: false)
+    }
+
+    private func organizeTranscript(
+        _ text: String,
+        language: LanguageOption,
+        appliesLint: Bool
+    ) -> String {
         paragraphParts(from: text)
-            .map { organizeParagraph($0, language: language) }
+            .map {
+                let organized = organizeParagraph($0, language: language)
+                return appliesLint ? lintParagraph(organized, language: language) : organized
+            }
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }
@@ -431,6 +629,151 @@ final class TranslationSessionStore {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: "\n")
+    }
+
+    private func lintParagraph(_ text: String, language: LanguageOption) -> String {
+        text
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map { lintLine(String($0), language: language) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
+    private func lintLine(_ text: String, language: LanguageOption) -> String {
+        var linted = text
+            .replacingOccurrences(of: #"(^|[\s,，])[,，]{1,}(\s*[,，]+)*"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+([,.!?。！？])"#, with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: #"([,.!?])(?=\S)"#, with: "$1 ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        linted = correctUnknownWords(in: linted, language: language)
+
+        if language.id == "en-US" {
+            linted = capitalizeSentenceStarts(linted)
+        }
+
+        return linted.trimmingCharacters(in: CharacterSet(charactersIn: " ,，"))
+    }
+
+    private func correctUnknownWords(in text: String, language: LanguageOption) -> String {
+        guard let spellLanguage = spellCheckerLanguage(for: language) else { return text }
+
+        var corrected = text
+        var searchLocation = 0
+
+        while searchLocation < (corrected as NSString).length {
+            var wordCount = 0
+            let misspelledRange = spellChecker.checkSpelling(
+                of: corrected,
+                startingAt: searchLocation,
+                language: spellLanguage,
+                wrap: false,
+                inSpellDocumentWithTag: spellDocumentTag,
+                wordCount: &wordCount
+            )
+            guard misspelledRange.location != NSNotFound, misspelledRange.length > 0 else { break }
+
+            let textValue = corrected as NSString
+            let word = textValue.substring(with: misspelledRange)
+            if let replacement = safeSpellingReplacement(
+                for: word,
+                in: corrected,
+                range: misspelledRange,
+                language: spellLanguage
+            ) {
+                corrected = textValue.replacingCharacters(in: misspelledRange, with: replacement)
+                searchLocation = misspelledRange.location + (replacement as NSString).length
+            } else {
+                searchLocation = misspelledRange.location + misspelledRange.length
+            }
+        }
+
+        return corrected
+    }
+
+    private func spellCheckerLanguage(for language: LanguageOption) -> String? {
+        let availableLanguages = spellChecker.availableLanguages
+        let normalizedID = language.id.replacingOccurrences(of: "-", with: "_")
+        if availableLanguages.contains(language.id) {
+            return language.id
+        }
+        if availableLanguages.contains(normalizedID) {
+            return normalizedID
+        }
+        if let baseID = language.id.split(separator: "-").first.map(String.init),
+           availableLanguages.contains(baseID) {
+            return baseID
+        }
+        return nil
+    }
+
+    private func safeSpellingReplacement(
+        for word: String,
+        in text: String,
+        range: NSRange,
+        language: String
+    ) -> String? {
+        guard shouldCorrectSpelledWord(word, language: language),
+              let guesses = spellChecker.guesses(
+                  forWordRange: range,
+                  in: text,
+                  language: language,
+                  inSpellDocumentWithTag: spellDocumentTag
+              ),
+              let replacement = guesses.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+              isConservativeReplacement(original: word, replacement: replacement)
+        else {
+            return nil
+        }
+
+        return replacement
+    }
+
+    private func shouldCorrectSpelledWord(_ word: String, language: String) -> Bool {
+        let trimmed = word.trimmingCharacters(in: .punctuationCharacters)
+        guard trimmed.count > 1 else { return false }
+        guard trimmed.rangeOfCharacter(from: .decimalDigits) == nil else { return false }
+        guard trimmed.range(of: #"[/\\@#_]"#, options: .regularExpression) == nil else { return false }
+
+        if language.hasPrefix("en"),
+           let first = trimmed.first,
+           first.isUppercase {
+            return false
+        }
+
+        return true
+    }
+
+    private func isConservativeReplacement(original: String, replacement: String) -> Bool {
+        guard !replacement.isEmpty, !replacement.contains("\n") else { return false }
+        let originalLength = max((original as NSString).length, 1)
+        let replacementLength = (replacement as NSString).length
+        guard replacementLength <= originalLength + 4 else { return false }
+        guard replacementLength * 3 >= originalLength else { return false }
+        return true
+    }
+
+    private func capitalizeSentenceStarts(_ text: String) -> String {
+        var result = ""
+        var shouldCapitalize = true
+
+        for character in text {
+            if shouldCapitalize, character.isLetter {
+                result.append(String(character).uppercased())
+                shouldCapitalize = false
+                continue
+            }
+
+            result.append(character)
+            if ".!?".contains(character) {
+                shouldCapitalize = true
+            } else if !character.isWhitespace {
+                shouldCapitalize = false
+            }
+        }
+
+        return result
     }
 
     private func paragraphParts(from text: String) -> [String] {
@@ -565,6 +908,10 @@ extension TranslationSessionStore: SystemAudioCaptureDelegate {
         Task { @MainActor in
             audioSampleCount = count
             latestAudioLevel = level
+            guard !isPaused else {
+                statusMessage = AppText.paused
+                return
+            }
             if isRunning, lines.isEmpty {
                 statusMessage = audioStatusMessage(sampleCount: count, level: level)
             }

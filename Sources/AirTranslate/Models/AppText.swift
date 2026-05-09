@@ -11,24 +11,41 @@ enum AppText {
 
     static let ready = localized(english: "Ready", korean: "준비됨")
     static let stopped = localized(english: "Stopped", korean: "중지됨")
+    static let paused = localized(english: "Paused", korean: "일시정지됨")
     static let capture = localized(english: "Capture", korean: "캡처")
     static let start = localized(english: "Start", korean: "시작")
     static let stop = localized(english: "Stop", korean: "중지")
+    static let pause = localized(english: "Pause", korean: "일시정지")
+    static let resume = localized(english: "Resume", korean: "재개")
     static let languages = localized(english: "Languages", korean: "언어")
     static let from = localized(english: "From", korean: "원문")
     static let to = localized(english: "To", korean: "번역")
     static let model = localized(english: "Model", korean: "모델")
     static let output = localized(english: "Output", korean: "출력")
     static let dubbing = localized(english: "Dubbing", korean: "더빙")
+    static let transcriptLint = localized(english: "Transcript Word Lint", korean: "전사 단어 린트")
+    static let transcriptLintDescription = localized(
+        english: "During silence, conservatively fixes transcription words when macOS spelling suggestions are confident. It does not remove repeated sentences or transcript content.",
+        korean: "침묵 시간에 macOS 맞춤법 후보가 확실한 전사 단어만 보수적으로 고칩니다. 반복 문장이나 전사 내용은 제거하지 않습니다."
+    )
     static let savedTranscripts = localized(english: "Saved Transcripts", korean: "저장된 전사")
-    static let saveCurrent = localized(english: "Save Current", korean: "현재 내용 저장")
+    static let autoSave = localized(english: "Auto-save", korean: "자동 저장")
+    static let autoSaveDescription = localized(
+        english: "Transcript text is kept in memory while listening, then saved as a dated plain .txt file with a short content title when capture stops or the app quits.",
+        korean: "전사 중에는 메모리에 유지하고, 캡처 중지 또는 앱 종료 직전에 날짜와 짧은 내용 제목이 들어간 일반 .txt 파일로 저장됩니다."
+    )
+    static let openSaveFolder = localized(
+        english: "Open Save Folder",
+        korean: "저장 폴더 열기"
+    )
     static let savedEmpty = localized(
-        english: "Saved transcripts will appear here.",
-        korean: "저장된 전사가 여기에 표시됩니다."
+        english: "Auto-saved transcripts will appear here.",
+        korean: "자동 저장된 전사가 여기에 표시됩니다."
     )
     static let editSaved = localized(english: "Edit Saved", korean: "저장본 편집")
     static let title = localized(english: "Title", korean: "제목")
     static let original = localized(english: "Original", korean: "원문")
+    static let transcriptText = localized(english: "Transcript Text", korean: "전사 텍스트")
     static let translation = localized(english: "Translation", korean: "번역")
     static let saveEdits = localized(english: "Save Edits", korean: "수정 저장")
     static let liveCaptions = localized(english: "Live Captions", korean: "실시간 전사")

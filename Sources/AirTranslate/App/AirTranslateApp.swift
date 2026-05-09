@@ -10,6 +10,12 @@ struct AirTranslateApp: App {
         WindowGroup {
             ContentView(session: session)
                 .frame(minWidth: 900, minHeight: 560)
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    session.prepareForTermination()
+                }
+                .onDisappear {
+                    session.prepareForTermination()
+                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {}

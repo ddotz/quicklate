@@ -16,8 +16,11 @@ struct CaptionBoardView: View {
 
                 Spacer()
 
-                Label(session.isRunning ? AppText.listening : AppText.idle, systemImage: session.isRunning ? "waveform" : "pause.circle")
-                    .foregroundStyle(session.isRunning ? .green : .secondary)
+                Label(
+                    session.isPaused ? AppText.paused : (session.isRunning ? AppText.listening : AppText.idle),
+                    systemImage: session.isPaused ? "pause.circle.fill" : (session.isRunning ? "waveform" : "pause.circle")
+                )
+                .foregroundStyle(session.isPaused ? .orange : (session.isRunning ? .green : .secondary))
             }
 
             ScrollViewReader { proxy in
@@ -35,18 +38,24 @@ struct CaptionBoardView: View {
                         ForEach(session.lines) { line in
                             CaptionLineView(line: line)
                                 .id(line.id)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
                     .padding(.vertical, 4)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.86), value: session.lines.count)
                 }
                 .onChange(of: session.lines.last?.id) { _, id in
                     if let id {
-                        proxy.scrollTo(id, anchor: .bottom)
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            proxy.scrollTo(id, anchor: .bottom)
+                        }
                     }
                 }
                 .onChange(of: session.lines.last?.revision) { _, _ in
                     if let id = session.lines.last?.id {
-                        proxy.scrollTo(id, anchor: .bottom)
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            proxy.scrollTo(id, anchor: .bottom)
+                        }
                     }
                 }
             }
@@ -78,13 +87,137 @@ private struct TranscriptPane: View {
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Text(text)
-                .font(isPrimary ? .body : .body.weight(.medium))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+            StreamingTranscriptText(
+                text: text,
+                font: isPrimary ? .body : .body.weight(.medium)
+            )
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 420, alignment: .topLeading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct StreamingTranscriptText: View {
+    let text: String
+    let font: Font
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var settledText = ""
+    @State private var appearingText = ""
+    @State private var appearingOpacity = 1.0
+    @State private var streamTask: Task<Void, Never>?
+
+    var body: some View {
+        Text(renderedText)
+            .font(font)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .onAppear {
+                stream(to: text)
+            }
+            .onChange(of: text) { _, newText in
+                stream(to: newText)
+            }
+            .onDisappear {
+                streamTask?.cancel()
+            }
+    }
+
+    private var renderedText: AttributedString {
+        var rendered = AttributedString(settledText)
+        var appearing = AttributedString(appearingText)
+        appearing.foregroundColor = .primary.opacity(appearingOpacity)
+        rendered.append(appearing)
+        return rendered
+    }
+
+    private var visibleText: String {
+        settledText + appearingText
+    }
+
+    private func stream(to newText: String) {
+        streamTask?.cancel()
+
+        if !appearingText.isEmpty {
+            settledText += appearingText
+            appearingText = ""
+            appearingOpacity = 1
+        }
+
+        guard !newText.isEmpty else {
+            settledText = ""
+            appearingText = ""
+            return
+        }
+
+        guard !reduceMotion else {
+            settledText = newText
+            return
+        }
+
+        guard newText.hasPrefix(visibleText), newText.count > visibleText.count else {
+            settledText = newText
+            appearingText = ""
+            appearingOpacity = 1
+            return
+        }
+
+        let remainingText = String(newText.dropFirst(visibleText.count))
+        let chunkSize = remainingText.count > 72 ? 4 : (remainingText.count > 28 ? 3 : 2)
+        let delay = remainingText.count > 72 ? 18_000_000 : (remainingText.count > 28 ? 28_000_000 : 38_000_000)
+        let fadeDuration = remainingText.count > 72 ? 0.12 : 0.18
+        let chunks = remainingText.chunkedForTranscriptStreaming(maxCharacters: chunkSize)
+
+        streamTask = Task { @MainActor in
+            for chunk in chunks {
+                if Task.isCancelled {
+                    return
+                }
+
+                if !appearingText.isEmpty {
+                    settledText += appearingText
+                }
+
+                appearingText = chunk
+                appearingOpacity = 0.12
+
+                withAnimation(.easeOut(duration: fadeDuration)) {
+                    appearingOpacity = 1
+                }
+
+                try? await Task.sleep(nanoseconds: UInt64(delay))
+            }
+
+            if !appearingText.isEmpty {
+                settledText += appearingText
+                appearingText = ""
+                appearingOpacity = 1
+            }
+        }
+    }
+}
+
+private extension String {
+    func chunkedForTranscriptStreaming(maxCharacters: Int) -> [String] {
+        guard maxCharacters > 0 else { return [self] }
+
+        var chunks: [String] = []
+        var current = ""
+
+        for character in self {
+            current.append(character)
+            if current.count >= maxCharacters || character.isWhitespace || character.isPunctuation {
+                chunks.append(current)
+                current = ""
+            }
+        }
+
+        if !current.isEmpty {
+            chunks.append(current)
+        }
+
+        return chunks
     }
 }

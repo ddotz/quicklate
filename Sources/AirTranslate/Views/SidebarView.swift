@@ -13,6 +13,17 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
+                if session.isRunning {
+                    Button {
+                        session.isPaused ? session.resume() : session.pause()
+                    } label: {
+                        Label(
+                            session.isPaused ? AppText.resume : AppText.pause,
+                            systemImage: session.isPaused ? "play.fill" : "pause.fill"
+                        )
+                    }
+                }
+
                 Text(session.statusMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -55,15 +66,26 @@ struct SidebarView: View {
 
             Section(AppText.output) {
                 Toggle(AppText.dubbing, isOn: $session.isDubbingEnabled)
+
+                Toggle(AppText.transcriptLint, isOn: $session.isTranscriptLintEnabled)
+
+                Text(AppText.transcriptLintDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section(AppText.savedTranscripts) {
+                Label(AppText.autoSave, systemImage: "checkmark.circle")
+
+                Text(AppText.autoSaveDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Button {
-                    session.saveCurrentTranscript()
+                    session.openTranscriptsFolder()
                 } label: {
-                    Label(AppText.saveCurrent, systemImage: "tray.and.arrow.down")
+                    Label(AppText.openSaveFolder, systemImage: "folder")
                 }
-                .disabled(!session.canSaveCurrentTranscript)
 
                 if session.savedTranscripts.isEmpty {
                     Text(AppText.savedEmpty)
@@ -86,21 +108,12 @@ struct SidebarView: View {
 
             if session.selectedSavedTranscriptID != nil {
                 Section(AppText.editSaved) {
-                    TextField(AppText.title, text: $session.savedDraftTitle)
-
-                    Text(AppText.original)
+                    Text(AppText.transcriptText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     TextEditor(text: $session.savedDraftSourceText)
                         .font(.caption)
-                        .frame(minHeight: 90)
-
-                    Text(AppText.translation)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextEditor(text: $session.savedDraftTranslatedText)
-                        .font(.caption)
-                        .frame(minHeight: 90)
+                        .frame(minHeight: 160)
 
                     HStack {
                         Button {
