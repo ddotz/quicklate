@@ -90,6 +90,7 @@ final class TranslationSessionStore {
     var savedTranscripts: [SavedTranscript] = []
     var selectedSavedTranscriptID: String?
     var savedDraftSourceText = ""
+    private(set) var latestAudioLevel: Float?
     var modelAvailabilityByModelID = Dictionary(
         uniqueKeysWithValues: IntelligenceModel.allCases.map {
             ($0.id, ModelAvailability.checking(for: $0))
@@ -103,7 +104,6 @@ final class TranslationSessionStore {
     private let spellChecker = NSSpellChecker.shared
     private let spellDocumentTag = NSSpellChecker.uniqueSpellDocumentTag()
     private var audioSampleCount = 0
-    private var latestAudioLevel: Float?
     private var lastRecognizedText = ""
     private var lastRecognizedWasFinal = false
     private var lastRecognitionAt = Date.distantPast

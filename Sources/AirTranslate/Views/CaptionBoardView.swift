@@ -15,6 +15,7 @@ struct CaptionBoardView: View {
                 subtitle: session.languageSummary,
                 isRunning: session.isRunning,
                 isPaused: session.isPaused,
+                audioLevel: session.latestAudioLevel,
                 isFloatingCaptionVisible: isFloatingCaptionVisible,
                 toggleCapture: {
                     requestCaptureToggle()
@@ -638,10 +639,18 @@ private struct SessionOverviewCard: View {
     let subtitle: String
     let isRunning: Bool
     let isPaused: Bool
+    let audioLevel: Float?
     let isFloatingCaptionVisible: Bool
     let toggleCapture: () -> Void
     let togglePause: () -> Void
     let showFloatingCaptions: () -> Void
+    @State private var recentlyClickedControl: HeaderControl?
+
+    private enum HeaderControl {
+        case capture
+        case pause
+        case floatingCaptions
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
@@ -654,41 +663,73 @@ private struct SessionOverviewCard: View {
                 .accessibilityLabel(title)
                 .accessibilityValue(subtitle)
 
-            Spacer(minLength: 12)
+            HeaderAudioLevelStrip(
+                isRunning: isRunning,
+                isPaused: isPaused,
+                audioLevel: audioLevel
+            )
+            .frame(maxWidth: .infinity)
+            .opacity(isRunning ? 1 : 0)
+            .accessibilityHidden(!isRunning)
 
             HStack(spacing: 6) {
-                SessionStatusBadge(isRunning: isRunning, isPaused: isPaused)
-
-                Button(action: toggleCapture) {
-                    HeaderCaptureTransportButton(isRunning: isRunning, isPaused: isPaused)
+                Button {
+                    registerClick(.capture, action: toggleCapture)
+                } label: {
+                    HeaderCaptureTransportButton(
+                        isRunning: isRunning,
+                        isPaused: isPaused,
+                        isRecentlyClicked: recentlyClickedControl == .capture
+                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(HeaderTransportButtonStyle(isActive: isRunning, shadowColor: captureAccentColor))
                 .help(isRunning ? AppText.stop : AppText.start)
                 .accessibilityLabel(isRunning ? AppText.stop : AppText.start)
+                .accessibilityValue(captureStateTitle)
+                .accessibilityAddTraits(isRunning ? .isSelected : [])
 
                 if isRunning {
-                    Button(action: togglePause) {
-                        HeaderPauseTransportButton(isPaused: isPaused)
+                    Button {
+                        registerClick(.pause, action: togglePause)
+                    } label: {
+                        HeaderPauseTransportButton(
+                            isPaused: isPaused,
+                            isRecentlyClicked: recentlyClickedControl == .pause
+                        )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(HeaderTransportButtonStyle(isActive: isPaused, shadowColor: isPaused ? .accentColor : .secondary))
                     .help(isPaused ? AppText.resume : AppText.pause)
                     .accessibilityLabel(isPaused ? AppText.resume : AppText.pause)
+                    .accessibilityValue(isPaused ? AppText.paused : AppText.listening)
+                    .accessibilityAddTraits(isPaused ? .isSelected : [])
                 }
 
-                Button(action: showFloatingCaptions) {
-                    HeaderFloatingCaptionToggleButton(isOn: isFloatingCaptionVisible)
+                Button {
+                    registerClick(.floatingCaptions, action: showFloatingCaptions)
+                } label: {
+                    HeaderFloatingCaptionToggleButton(
+                        isOn: isFloatingCaptionVisible,
+                        isRecentlyClicked: recentlyClickedControl == .floatingCaptions
+                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(HeaderTransportButtonStyle(isActive: isFloatingCaptionVisible, shadowColor: .green))
                 .help(AppText.showFloatingCaptions)
                 .accessibilityLabel(AppText.showFloatingCaptions)
                 .accessibilityValue(isFloatingCaptionVisible ? AppText.floatingCaptionPowerOn : AppText.floatingCaptionPowerOff)
+                .accessibilityAddTraits(isFloatingCaptionVisible ? .isSelected : [])
             }
-            .padding(4)
+            .padding(5)
             .background(.ultraThinMaterial, in: Capsule())
+            .background(headerClusterAccentColor.opacity(isRunning || isFloatingCaptionVisible ? 0.08 : 0), in: Capsule())
             .overlay {
                 Capsule()
-                    .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
+                    .strokeBorder(headerClusterAccentColor.opacity(isRunning || isFloatingCaptionVisible ? 0.22 : 0.08), lineWidth: 1)
             }
+            .shadow(color: headerClusterAccentColor.opacity(isRunning && !isPaused ? 0.16 : 0), radius: 12)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: recentlyClickedControl)
+            .animation(.spring(response: 0.24, dampingFraction: 0.78), value: isRunning)
+            .animation(.spring(response: 0.24, dampingFraction: 0.78), value: isPaused)
+            .animation(.spring(response: 0.24, dampingFraction: 0.78), value: isFloatingCaptionVisible)
             .layoutPriority(2)
         }
         .padding(.horizontal, 14)
@@ -700,11 +741,54 @@ private struct SessionOverviewCard: View {
                 .strokeBorder(Color.primary.opacity(0.06))
         }
     }
+
+    private var captureStateTitle: String {
+        if isPaused {
+            return AppText.paused
+        }
+        if isRunning {
+            return AppText.listening
+        }
+        return AppText.ready
+    }
+
+    private var captureAccentColor: Color {
+        if isPaused {
+            return .orange
+        }
+        if isRunning {
+            return .red
+        }
+        return .accentColor
+    }
+
+    private var headerClusterAccentColor: Color {
+        if isPaused {
+            return .orange
+        }
+        if isRunning || isFloatingCaptionVisible {
+            return .green
+        }
+        return .secondary
+    }
+
+    private func registerClick(_ control: HeaderControl, action: () -> Void) {
+        recentlyClickedControl = control
+        action()
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(800))
+            if recentlyClickedControl == control {
+                recentlyClickedControl = nil
+            }
+        }
+    }
 }
 
 private struct HeaderCaptureTransportButton: View {
     let isRunning: Bool
     let isPaused: Bool
+    let isRecentlyClicked: Bool
 
     private var accentColor: Color {
         if isPaused {
@@ -721,115 +805,264 @@ private struct HeaderCaptureTransportButton: View {
     }
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(accentColor.opacity(isRunning ? 0.18 : 0.14))
-
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(accentColor.opacity(isRunning ? 0.5 : 0.32), lineWidth: 1)
-
+        HeaderTransportIconSurface(
+            accentColor: accentColor,
+            isActive: isRunning,
+            isRecentlyClicked: isRecentlyClicked,
+            activeFillOpacity: isRunning ? 0.28 : 0.18,
+            activeStrokeOpacity: isRunning ? 0.62 : 0.36,
+            liveDotColor: isRunning ? (isPaused ? .orange : .green) : nil
+        ) {
             Image(systemName: systemImage)
                 .font(.system(size: 14, weight: .black))
-                .foregroundStyle(accentColor)
+                .foregroundStyle(isRunning ? Color.white : accentColor)
+                .frame(width: isRunning ? 21 : 18, height: isRunning ? 21 : 18)
+                .background(isRunning ? accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .offset(x: isRunning ? 0 : 1)
-
-            if isRunning {
-                Circle()
-                    .fill(isPaused ? Color.orange : Color.green)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: (isPaused ? Color.orange : Color.green).opacity(0.6), radius: 4)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
-            }
         }
-        .frame(width: 34, height: 34)
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
 private struct HeaderPauseTransportButton: View {
     let isPaused: Bool
+    let isRecentlyClicked: Bool
 
     private var accentColor: Color {
         isPaused ? .accentColor : .secondary
     }
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(accentColor.opacity(isPaused ? 0.14 : 0.1))
-
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(accentColor.opacity(isPaused ? 0.34 : 0.18), lineWidth: 1)
-
+        HeaderTransportIconSurface(
+            accentColor: accentColor,
+            isActive: isPaused,
+            isRecentlyClicked: isRecentlyClicked,
+            activeFillOpacity: 0.22,
+            activeStrokeOpacity: 0.48
+        ) {
             Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: isPaused ? 14 : 15, weight: .black))
                 .foregroundStyle(accentColor)
                 .offset(x: isPaused ? 0.9 : 0)
         }
-        .frame(width: 34, height: 34)
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
 private struct HeaderFloatingCaptionToggleButton: View {
     let isOn: Bool
+    let isRecentlyClicked: Bool
 
     private var accentColor: Color {
         isOn ? .green : .secondary
     }
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(accentColor.opacity(isOn ? 0.16 : 0.1))
-
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(accentColor.opacity(isOn ? 0.42 : 0.18), lineWidth: 1)
-
+        HeaderTransportIconSurface(
+            accentColor: accentColor,
+            isActive: isOn,
+            isRecentlyClicked: isRecentlyClicked,
+            activeFillOpacity: 0.2,
+            activeStrokeOpacity: 0.5,
+            liveDotColor: isOn ? .green : Color.secondary.opacity(0.62)
+        ) {
             Image(systemName: isOn ? "captions.bubble.fill" : "captions.bubble")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(accentColor)
-
-            Circle()
-                .fill(isOn ? Color.green : Color.secondary.opacity(0.55))
-                .frame(width: 6, height: 6)
-                .shadow(color: (isOn ? Color.green : Color.clear).opacity(0.6), radius: 4)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(6)
         }
-        .frame(width: 34, height: 34)
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
-private struct SessionStatusBadge: View {
+private struct HeaderTransportButtonStyle: ButtonStyle {
+    let isActive: Bool
+    let shadowColor: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .brightness(configuration.isPressed ? 0.05 : 0)
+            .shadow(color: shadowColor.opacity(isActive ? 0.2 : 0), radius: isActive ? 9 : 0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.72), value: configuration.isPressed)
+    }
+}
+
+private struct HeaderTransportIconSurface<Content: View>: View {
+    let accentColor: Color
+    let isActive: Bool
+    let isRecentlyClicked: Bool
+    let activeFillOpacity: Double
+    let activeStrokeOpacity: Double
+    let liveDotColor: Color?
+    private let content: Content
+    @State private var isHovered = false
+
+    init(
+        accentColor: Color,
+        isActive: Bool,
+        isRecentlyClicked: Bool,
+        activeFillOpacity: Double,
+        activeStrokeOpacity: Double,
+        liveDotColor: Color? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.accentColor = accentColor
+        self.isActive = isActive
+        self.isRecentlyClicked = isRecentlyClicked
+        self.activeFillOpacity = activeFillOpacity
+        self.activeStrokeOpacity = activeStrokeOpacity
+        self.liveDotColor = liveDotColor
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(accentColor.opacity(isActive ? activeFillOpacity : (isHovered ? 0.15 : 0.09)))
+
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(accentColor.opacity(isActive ? activeStrokeOpacity : (isHovered ? 0.32 : 0.16)), lineWidth: 1.2)
+
+            content
+
+            if let liveDotColor {
+                Circle()
+                    .fill(liveDotColor)
+                    .frame(width: 7, height: 7)
+                    .shadow(color: liveDotColor.opacity(isActive ? 0.75 : 0), radius: isActive ? 5 : 0)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(6)
+                    .accessibilityHidden(true)
+            }
+
+            if isRecentlyClicked {
+                HeaderClickConfirmationMark(accentColor: accentColor)
+            }
+        }
+        .frame(width: 40, height: 40)
+        .scaleEffect(isHovered ? 1.035 : 1)
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .onHover { isHovered = $0 }
+        .animation(.spring(response: 0.22, dampingFraction: 0.76), value: isHovered)
+        .animation(.spring(response: 0.24, dampingFraction: 0.8), value: isActive)
+    }
+}
+
+private struct HeaderClickConfirmationMark: View {
+    let accentColor: Color
+
+    var body: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: 7, weight: .black))
+            .foregroundStyle(.white)
+            .frame(width: 12, height: 12)
+            .background(accentColor, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(4)
+            .transition(.scale.combined(with: .opacity))
+    }
+}
+
+private struct HeaderAudioLevelStrip: View {
     let isRunning: Bool
     let isPaused: Bool
+    let audioLevel: Float?
 
     private var title: String {
         isPaused ? AppText.paused : (isRunning ? AppText.listening : AppText.idle)
     }
 
-    private var systemImage: String {
-        isPaused ? "pause.circle.fill" : (isRunning ? "waveform.circle.fill" : "moon.zzz.fill")
-    }
-
     private var foregroundStyle: Color {
-        isPaused ? .orange : (isRunning ? .green : .secondary)
+        isPaused ? .orange : .green
     }
 
     var body: some View {
-        Image(systemName: systemImage)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(foregroundStyle)
-            .frame(width: 34, height: 34)
-            .background(foregroundStyle.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(foregroundStyle.opacity(0.18), lineWidth: 1)
+        TimelineView(.animation(minimumInterval: 0.08)) { timeline in
+            ZStack {
+                Capsule(style: .continuous)
+                    .fill(foregroundStyle.opacity(isPaused ? 0.14 : 0.11))
+
+                Capsule(style: .continuous)
+                    .strokeBorder(foregroundStyle.opacity(isPaused ? 0.34 : 0.42), lineWidth: 1)
+
+                if isPaused {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundStyle(foregroundStyle)
+                } else {
+                    AudioLevelWaveform(
+                        level: audioLevel,
+                        date: timeline.date,
+                        barCount: 18,
+                        width: 136,
+                        height: 24,
+                        barWidth: 3.4,
+                        barSpacing: 3.2
+                    )
+                }
             }
+            .frame(width: 164, height: 34)
+            .shadow(color: foregroundStyle.opacity(isRunning && !isPaused ? 0.18 : 0), radius: 12)
             .help(title)
             .accessibilityLabel(title)
+            .accessibilityValue(accessibilityValue)
+            .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isRunning)
+            .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isPaused)
+            .animation(.spring(response: 0.16, dampingFraction: 0.78), value: audioLevel)
+        }
+    }
+
+    private var accessibilityValue: String {
+        guard let audioLevel, isRunning, !isPaused else {
+            return title
+        }
+
+        return "\(title), \(Int(audioLevel.rounded())) dB"
+    }
+}
+
+private struct AudioLevelWaveform: View {
+    let level: Float?
+    let date: Date
+    var barCount = 5
+    var width = 25.0
+    var height = 24.0
+    var barWidth = 3.8
+    var barSpacing = 3.0
+
+    var body: some View {
+        HStack(alignment: .center, spacing: barSpacing) {
+            ForEach(0..<barCount, id: \.self) { index in
+                Capsule(style: .continuous)
+                    .fill(barFill(for: index))
+                    .frame(width: barWidth, height: barHeight(for: index))
+            }
+        }
+        .frame(width: width, height: height)
+        .accessibilityHidden(true)
+    }
+
+    private var normalizedLevel: Double {
+        guard let level else { return 0.18 }
+
+        let clampedLevel = min(max(Double(level), -60), -12)
+        return (clampedLevel + 60) / 48
+    }
+
+    private func barHeight(for index: Int) -> Double {
+        let centerDistance = abs(Double(index) - Double(barCount - 1) / 2)
+        let centerBoost = max(0.54, 1 - (centerDistance * 0.055))
+        let phase = date.timeIntervalSinceReferenceDate * 7.5 + Double(index) * 0.82
+        let movement = (sin(phase) + 1) / 2
+        let dynamicLevel = 0.18 + normalizedLevel * 0.82
+        let computedHeight = 5 + (dynamicLevel * centerBoost * (0.66 + movement * 0.42) * (height - 5))
+
+        return min(max(computedHeight, 5), height)
+    }
+
+    private func barFill(for index: Int) -> Color {
+        let quietOpacity = 0.44 + Double(index) * 0.035
+        return Color.green.opacity(min(0.92, 0.46 + normalizedLevel * quietOpacity))
     }
 }

@@ -8,6 +8,8 @@ protocol SystemAudioCaptureDelegate: AnyObject {
 }
 
 final class SystemAudioCapture: NSObject, @unchecked Sendable {
+    private static let audioLevelReportInterval = 8
+
     weak var delegate: SystemAudioCaptureDelegate?
 
     private var stream: SCStream?
@@ -61,7 +63,7 @@ extension SystemAudioCapture: SCStreamOutput {
         guard type == .audio, sampleBuffer.isValid else { return }
         audioSampleCount += 1
         delegate?.systemAudioCapture(self, didOutput: sampleBuffer)
-        if audioSampleCount == 1 || audioSampleCount % 50 == 0 {
+        if audioSampleCount == 1 || audioSampleCount % Self.audioLevelReportInterval == 0 {
             delegate?.systemAudioCapture(
                 self,
                 didReceiveAudioSampleCount: audioSampleCount,
