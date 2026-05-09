@@ -27,6 +27,7 @@ private struct TranslationRequest {
 @MainActor
 final class TranslationSessionStore {
     private static let maxTranslationCacheEntries = 2_000
+    private static let committedRevisionSearchLimit = 2
 
     var isRunning = false
     var isPaused = false
@@ -143,6 +144,11 @@ final class TranslationSessionStore {
     private struct PartialSavedTranscript {
         var original: SavedTranscriptFile?
         var translation: SavedTranscriptFile?
+    }
+
+    private struct TranscriptUnit {
+        var separatorBefore: String
+        var text: String
     }
 
     init() {
@@ -876,7 +882,11 @@ final class TranslationSessionStore {
             pendingParagraphBreakBeforePartial = !committedSourceText.isEmpty
         }
 
-        let incomingPartial = uncommittedIncomingText(from: trimmedIncoming)
+        let incomingPartial = uncommittedIncomingText(
+            from: trimmedIncoming,
+            allowsCommittedRevision: !hadLongSilence,
+            allowsCommittedReplay: !hadLongSilence
+        )
         guard !incomingPartial.isEmpty else { return visibleTranscript() }
 
         if currentPartialText.isEmpty {
@@ -891,27 +901,42 @@ final class TranslationSessionStore {
 
         commitCurrentPartial()
         pendingParagraphBreakBeforePartial = hadLongSilence && !committedSourceText.isEmpty
-        currentPartialText = uncommittedIncomingText(from: trimmedIncoming)
+        currentPartialText = uncommittedIncomingText(
+            from: trimmedIncoming,
+            allowsCommittedRevision: true,
+            allowsCommittedReplay: true
+        )
         return visibleTranscript()
     }
 
-    private func uncommittedIncomingText(from incoming: String) -> String {
-        if committedTextAlreadyContains(incoming) {
+    private func uncommittedIncomingText(
+        from incoming: String,
+        allowsCommittedRevision: Bool,
+        allowsCommittedReplay: Bool
+    ) -> String {
+        if allowsCommittedReplay, committedTranscriptAlreadyMatches(incoming) {
             return ""
         }
 
-        if replaceCommittedTailIfRevision(with: incoming) {
+        if allowsCommittedRevision,
+           replaceCommittedUnitsIfRevision(with: incoming, allowsBackfill: true) {
             return ""
         }
 
-        if let tail = incomingTailAfterCommittedText(incoming) {
+        if let tail = incomingTailAfterCommittedText(
+            incoming,
+            allowsCommittedReplay: allowsCommittedReplay
+        ) {
             return tail
         }
 
         return incoming
     }
 
-    private func incomingTailAfterCommittedText(_ incoming: String) -> String? {
+    private func incomingTailAfterCommittedText(
+        _ incoming: String,
+        allowsCommittedReplay: Bool
+    ) -> String? {
         let normalizedCommitted = normalizedTranscriptForComparison(committedSourceText)
         let normalizedIncoming = normalizedTranscriptForComparison(incoming)
         guard isWholeTextPrefix(normalizedCommitted, of: normalizedIncoming) else {
@@ -919,7 +944,12 @@ final class TranslationSessionStore {
         }
 
         guard normalizedIncoming != normalizedCommitted else {
-            return ""
+            if allowsCommittedReplay,
+               transcriptUnits(from: incoming).count > 1 || shouldSuppressExactRecentRepeat(normalizedIncoming) {
+                return ""
+            }
+
+            return nil
         }
 
         guard let tailStart = originalIndex(
@@ -1018,9 +1048,9 @@ final class TranslationSessionStore {
 
         if committedSourceText.isEmpty {
             committedSourceText = partial
-        } else if replaceCommittedTailIfRevision(with: partial) {
+        } else if replaceCommittedUnitsIfRevision(with: partial, allowsBackfill: false) {
             // The speech recognizer can resend the last phrase with better wording after
-            // paragraph cleanup. Treat that as a replacement, not a new paragraph.
+            // cleanup. Treat that as a replacement, not a new line.
         } else if shouldAppendCommittedPartial(partial) {
             let separator = pendingParagraphBreakBeforePartial ? "\n\n" : "\n"
             committedSourceText += separator + partial
@@ -1029,45 +1059,152 @@ final class TranslationSessionStore {
         currentPartialText = ""
     }
 
-    private func replaceCommittedTailIfRevision(with text: String) -> Bool {
-        let revisedParagraph = organizeTranscript(text, language: sourceLanguage)
-        guard !revisedParagraph.isEmpty else { return false }
+    private func replaceCommittedUnitsIfRevision(with text: String, allowsBackfill: Bool) -> Bool {
+        let revisedText = organizeTranscript(text, language: sourceLanguage)
+        let incomingUnits = transcriptUnits(from: revisedText)
+        guard !incomingUnits.isEmpty else { return false }
 
-        var paragraphs = paragraphParts(from: committedSourceText)
-        guard let lastParagraph = paragraphs.last,
-              isLikelyRevision(revisedParagraph, of: lastParagraph)
-        else {
-            return false
+        var committedUnits = transcriptUnits(from: committedSourceText)
+        guard !committedUnits.isEmpty else { return false }
+
+        if incomingUnits.count > 1 {
+            guard incomingUnits.count <= committedUnits.count else { return false }
+
+            let suffixStartIndex = committedUnits.count - incomingUnits.count
+            let suffixPairs = zip(incomingUnits, committedUnits[suffixStartIndex...])
+            guard suffixPairs.allSatisfy({
+                isLikelyRecentTranscriptRevision($0.text, of: $1.text, allowsExactRepeat: false)
+                    || normalizedTranscriptForComparison($0.text) == normalizedTranscriptForComparison($1.text)
+            }) else {
+                return false
+            }
+            guard suffixPairs.contains(where: {
+                normalizedTranscriptForComparison($0.text) != normalizedTranscriptForComparison($1.text)
+            }) else {
+                return false
+            }
+
+            for (offset, incomingUnit) in incomingUnits.enumerated() {
+                let index = suffixStartIndex + offset
+                committedUnits[index].text = preferredCommittedRevision(
+                    existing: committedUnits[index].text,
+                    incoming: incomingUnit.text
+                )
+            }
+            committedSourceText = transcriptText(from: committedUnits)
+            return true
         }
 
-        paragraphs[paragraphs.count - 1] = revisedParagraph
-        committedSourceText = paragraphs.joined(separator: "\n\n")
-        return true
+        guard let incomingUnit = incomingUnits.first else { return false }
+
+        let tailIndex = committedUnits.count - 1
+        let firstSearchIndex = allowsBackfill
+            ? max(0, committedUnits.count - Self.committedRevisionSearchLimit)
+            : tailIndex
+
+        for index in stride(from: tailIndex, through: firstSearchIndex, by: -1) {
+            if index < tailIndex, committedUnits[tailIndex].separatorBefore == "\n\n" {
+                break
+            }
+
+            let existingText = committedUnits[index].text
+            let isTail = index == tailIndex
+            guard isLikelyRecentTranscriptRevision(
+                incomingUnit.text,
+                of: existingText,
+                allowsExactRepeat: isTail
+            ) else {
+                continue
+            }
+
+            committedUnits[index].text = preferredCommittedRevision(
+                existing: existingText,
+                incoming: incomingUnit.text
+            )
+            committedSourceText = transcriptText(from: committedUnits)
+            return true
+        }
+
+        return false
     }
 
-    private func isLikelyRevision(_ incoming: String, of existing: String) -> Bool {
+    private func isLikelyRecentTranscriptRevision(
+        _ incoming: String,
+        of existing: String,
+        allowsExactRepeat: Bool
+    ) -> Bool {
         let normalizedIncoming = normalizedTranscriptForComparison(incoming)
         let normalizedExisting = normalizedTranscriptForComparison(existing)
         guard normalizedIncoming != normalizedExisting,
               normalizedIncoming.count >= 12,
               normalizedExisting.count >= 12
         else {
-            return false
+            return allowsExactRepeat && shouldSuppressExactRecentRepeat(normalizedIncoming)
         }
 
+        if isWholeTextPrefix(normalizedIncoming, of: normalizedExisting)
+            || isWholeTextPrefix(normalizedExisting, of: normalizedIncoming) {
+            return true
+        }
+
+        let incomingTokens = transcriptTokens(from: normalizedIncoming)
+        let existingTokens = transcriptTokens(from: normalizedExisting)
+        let smallerCount = min(incomingTokens.count, existingTokens.count)
+        guard smallerCount >= 5 else { return false }
+
         let sharedPrefixLength = commonPrefixLength(normalizedIncoming, normalizedExisting)
-        return sharedPrefixLength >= 8
-            && tokenOverlapRatio(normalizedIncoming, normalizedExisting) >= 0.58
+        let overlapCount = orderedTokenOverlapCount(incomingTokens, existingTokens)
+        let overlapRatio = Double(overlapCount) / Double(smallerCount)
+        let shorterLength = min(normalizedIncoming.count, normalizedExisting.count)
+        let longerLength = max(normalizedIncoming.count, normalizedExisting.count)
+        let lengthRatio = Double(longerLength) / Double(shorterLength)
+
+        if sharedPrefixLength >= 8,
+           overlapCount >= 4,
+           overlapRatio >= 0.58,
+           lengthRatio <= 2.25 {
+            return true
+        }
+
+        if overlapCount >= 8,
+           overlapRatio >= 0.74,
+           lengthRatio <= 1.35 {
+            return true
+        }
+
+        return overlapCount >= 5
+            && overlapRatio >= 0.78
+            && lengthRatio <= 1.6
     }
 
-    private func tokenOverlapRatio(_ lhs: String, _ rhs: String) -> Double {
-        let lhsTokens = Set(transcriptTokens(from: lhs))
-        let rhsTokens = Set(transcriptTokens(from: rhs))
-        let smallerCount = min(lhsTokens.count, rhsTokens.count)
-        guard smallerCount > 0 else { return 0 }
+    private func preferredCommittedRevision(existing: String, incoming: String) -> String {
+        let normalizedExisting = normalizedTranscriptForComparison(existing)
+        let normalizedIncoming = normalizedTranscriptForComparison(incoming)
 
-        let overlapCount = lhsTokens.intersection(rhsTokens).count
-        return Double(overlapCount) / Double(smallerCount)
+        if normalizedIncoming.count * 5 >= normalizedExisting.count * 3 {
+            return incoming
+        }
+
+        return existing
+    }
+
+    private func orderedTokenOverlapCount(_ lhs: [String], _ rhs: [String]) -> Int {
+        guard !lhs.isEmpty, !rhs.isEmpty else { return 0 }
+
+        var previousRow = Array(repeating: 0, count: rhs.count + 1)
+        for lhsToken in lhs {
+            var currentRow = Array(repeating: 0, count: rhs.count + 1)
+            for (rhsIndex, rhsToken) in rhs.enumerated() {
+                if lhsToken == rhsToken {
+                    currentRow[rhsIndex + 1] = previousRow[rhsIndex] + 1
+                } else {
+                    currentRow[rhsIndex + 1] = max(previousRow[rhsIndex + 1], currentRow[rhsIndex])
+                }
+            }
+            previousRow = currentRow
+        }
+
+        return previousRow[rhs.count]
     }
 
     private func transcriptTokens(from text: String) -> [String] {
@@ -1085,7 +1222,7 @@ final class TranslationSessionStore {
             .filter { $0.count > 1 }
     }
 
-    private func committedTextAlreadyContains(_ text: String) -> Bool {
+    private func committedTranscriptAlreadyMatches(_ text: String) -> Bool {
         let committed = committedSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !committed.isEmpty else { return false }
 
@@ -1094,17 +1231,86 @@ final class TranslationSessionStore {
         guard !normalizedText.isEmpty else { return false }
 
         return normalizedCommitted == normalizedText
-            || normalizedCommitted.hasSuffix(normalizedText)
-            || normalizedCommitted.contains(normalizedText)
+            && (transcriptUnits(from: committed).count > 1 || shouldSuppressExactRecentRepeat(normalizedText))
     }
 
     private func shouldAppendCommittedPartial(_ partial: String) -> Bool {
-        let normalizedCommitted = normalizedTranscriptForComparison(committedSourceText)
         let normalizedPartial = normalizedTranscriptForComparison(partial)
         guard !normalizedPartial.isEmpty else { return false }
 
-        return !normalizedCommitted.hasSuffix(normalizedPartial)
-            && !normalizedCommitted.contains(normalizedPartial)
+        guard !committedTranscriptAlreadyMatches(partial) else { return false }
+
+        let partialUnits = transcriptUnits(from: partial)
+        let committedUnits = transcriptUnits(from: committedSourceText)
+        guard partialUnits.count == 1,
+              let partialUnit = partialUnits.first,
+              let lastCommittedUnit = committedUnits.last
+        else {
+            return true
+        }
+
+        let normalizedPartialUnit = normalizedTranscriptForComparison(partialUnit.text)
+        let normalizedLastUnit = normalizedTranscriptForComparison(lastCommittedUnit.text)
+        return normalizedPartialUnit != normalizedLastUnit
+            || pendingParagraphBreakBeforePartial
+            || !shouldSuppressExactRecentRepeat(normalizedPartialUnit)
+    }
+
+    private func shouldSuppressExactRecentRepeat(_ normalizedText: String) -> Bool {
+        normalizedText.count >= 15
+            && transcriptTokens(from: normalizedText).count >= 4
+    }
+
+    private func transcriptUnits(from text: String) -> [TranscriptUnit] {
+        var units: [TranscriptUnit] = []
+        var buffer = ""
+        var newlineCount = 0
+        var separatorForNext = ""
+        let normalizedText = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+
+        func appendBufferedUnit() {
+            let trimmedText = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedText.isEmpty else {
+                buffer = ""
+                return
+            }
+
+            let separator = units.isEmpty ? "" : (separatorForNext.isEmpty ? "\n" : separatorForNext)
+            units.append(TranscriptUnit(separatorBefore: separator, text: trimmedText))
+            buffer = ""
+            separatorForNext = ""
+        }
+
+        for character in normalizedText {
+            if character == "\n" {
+                appendBufferedUnit()
+                newlineCount += 1
+                continue
+            }
+
+            if newlineCount > 0 {
+                separatorForNext = newlineCount >= 2 ? "\n\n" : "\n"
+                newlineCount = 0
+            }
+            buffer.append(character)
+        }
+
+        appendBufferedUnit()
+        return units
+    }
+
+    private func transcriptText(from units: [TranscriptUnit]) -> String {
+        units.enumerated().map { index, unit in
+            if index == 0 {
+                return unit.text
+            }
+
+            let separator = unit.separatorBefore.isEmpty ? "\n" : unit.separatorBefore
+            return separator + unit.text
+        }
+        .joined()
     }
 
     private func normalizedTranscriptForComparison(_ text: String) -> String {
