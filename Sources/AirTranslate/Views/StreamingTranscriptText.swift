@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct StreamingTranscriptText: View {
+    private static let maxAnimatedTextLength = 2_400
+    private static let maxAnimatedDeltaLength = 360
+
     let text: String
     let font: Font
     var foregroundColor = Color.primary
@@ -82,6 +85,11 @@ struct StreamingTranscriptText: View {
             return
         }
 
+        guard newText.count <= Self.maxAnimatedTextLength else {
+            settledText = newText
+            return
+        }
+
         guard newText.hasPrefix(visibleText), newText.count > visibleText.count else {
             settledText = newText
             appearingText = ""
@@ -90,6 +98,11 @@ struct StreamingTranscriptText: View {
         }
 
         let remainingText = String(newText.dropFirst(visibleText.count))
+        guard remainingText.count <= Self.maxAnimatedDeltaLength else {
+            settledText = newText
+            return
+        }
+
         let chunkSize = remainingText.count > 72 ? 8 : (remainingText.count > 28 ? 6 : 4)
         let delay = remainingText.count > 72 ? 10_000_000 : (remainingText.count > 28 ? 14_000_000 : 18_000_000)
         let fadeDuration = remainingText.count > 72 ? 0.08 : 0.12

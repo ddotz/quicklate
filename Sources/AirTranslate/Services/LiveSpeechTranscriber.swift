@@ -16,6 +16,7 @@ final class LiveSpeechTranscriber: @unchecked Sendable {
     weak var delegate: LiveSpeechTranscriberDelegate?
 
     private static let reusablePCMBufferCount = 48
+    private static let analyzerInputBufferLimit = 32
 
     private let audioFormat = AVAudioFormat(
         commonFormat: .pcmFormatInt16,
@@ -65,7 +66,9 @@ final class LiveSpeechTranscriber: @unchecked Sendable {
             ))
         }
         let modules: [any SpeechModule] = transcribers.map(\.transcriber)
-        let inputStream = AsyncStream<AnalyzerInput> { continuation in
+        let inputStream = AsyncStream<AnalyzerInput>(
+            bufferingPolicy: .bufferingNewest(Self.analyzerInputBufferLimit)
+        ) { continuation in
             self.inputContinuation = continuation
         }
         let analyzer = SpeechAnalyzer(modules: modules)

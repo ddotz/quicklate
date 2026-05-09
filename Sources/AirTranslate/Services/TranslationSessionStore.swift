@@ -12,6 +12,7 @@ private enum SettingsKey {
     static let floatingCaptionDisplayMode = "floatingCaptionDisplayMode"
     static let floatingCaptionTextSize = "floatingCaptionTextSize"
     static let floatingCaptionLineCount = "floatingCaptionLineCount"
+    static let paragraphBreakSilenceInterval = "paragraphBreakSilenceInterval"
 }
 
 private struct TranslationRequest {
@@ -24,6 +25,8 @@ private struct TranslationRequest {
 @Observable
 @MainActor
 final class TranslationSessionStore {
+    private static let maxTranslationCacheEntries = 240
+
     var isRunning = false
     var isPaused = false
     var isDubbingEnabled = false {
@@ -41,18 +44,21 @@ final class TranslationSessionStore {
     var sourceLanguage = LanguageOption.supported[0] {
         didSet {
             persistSelectedSettings()
+            resetTranslationCache()
             resetDubbingProgress()
         }
     }
     var targetLanguage = LanguageOption.supported[1] {
         didSet {
             persistSelectedSettings()
+            resetTranslationCache()
             resetDubbingProgress()
         }
     }
     var selectedModel = IntelligenceModel.appleSystem {
         didSet {
             persistSelectedSettings()
+            resetTranslationCache()
             resetDubbingProgress()
         }
     }
@@ -66,6 +72,9 @@ final class TranslationSessionStore {
         didSet { persistSelectedSettings() }
     }
     var floatingCaptionLineCount = FloatingCaptionLineCount.three {
+        didSet { persistSelectedSettings() }
+    }
+    var paragraphBreakSilenceInterval = 5.0 {
         didSet { persistSelectedSettings() }
     }
     var statusMessage = AppText.ready
@@ -95,6 +104,7 @@ final class TranslationSessionStore {
     private var pendingParagraphBreakBeforePartial = false
     private var pendingTranslationSourceText = ""
     private var translatedSegmentsBySource: [String: String] = [:]
+    private var translationCacheKeyOrder: [String] = []
     private var activeAutosaveTranscriptID: String?
     private var activeAutosaveSourceText = ""
     private var isRestoringSelectedSettings = false
@@ -279,6 +289,7 @@ final class TranslationSessionStore {
         pendingTranslationSourceText = ""
         latestTranslationRequest = nil
         translationBurstStartedAt = Date.distantPast
+        resetTranslationCache()
         activeAutosaveTranscriptID = nil
         activeAutosaveSourceText = ""
         stopSpeaking()
@@ -344,6 +355,12 @@ final class TranslationSessionStore {
            let lineCount = FloatingCaptionLineCount(rawValue: rawValue) {
             floatingCaptionLineCount = lineCount
         }
+        if defaults.object(forKey: SettingsKey.paragraphBreakSilenceInterval) != nil {
+            paragraphBreakSilenceInterval = min(
+                max(defaults.double(forKey: SettingsKey.paragraphBreakSilenceInterval), 1),
+                15
+            )
+        }
     }
 
     private func persistSelectedSettings() {
@@ -358,6 +375,7 @@ final class TranslationSessionStore {
         defaults.set(floatingCaptionDisplayMode.id, forKey: SettingsKey.floatingCaptionDisplayMode)
         defaults.set(floatingCaptionTextSize.id, forKey: SettingsKey.floatingCaptionTextSize)
         defaults.set(floatingCaptionLineCount.id, forKey: SettingsKey.floatingCaptionLineCount)
+        defaults.set(paragraphBreakSilenceInterval, forKey: SettingsKey.paragraphBreakSilenceInterval)
     }
 
     private func floatingCaptionText(from text: String?) -> String {
@@ -522,7 +540,7 @@ final class TranslationSessionStore {
         guard let direction = translationDirection(for: sourceText, recognizedLanguage: recognizedLanguage) else { return }
 
         let now = Date()
-        let hadLongSilence = now.timeIntervalSince(lastRecognitionAt) > 5
+        let hadLongSilence = now.timeIntervalSince(lastRecognitionAt) > paragraphBreakSilenceInterval
 
         let updatedSourceText = accumulatedTranscript(
             incoming: sourceText,
@@ -943,6 +961,7 @@ final class TranslationSessionStore {
                 try Task.checkCancellation()
                 let cacheKey = translationCacheKey(segment: segment, source: source, target: target)
                 if let cachedSegment = translatedSegmentsBySource[cacheKey] {
+                    rememberTranslationCacheKey(cacheKey)
                     translatedSegments.append(cachedSegment)
                     continue
                 }
@@ -955,7 +974,7 @@ final class TranslationSessionStore {
                 )
                 try Task.checkCancellation()
                 let organizedSegment = organizeTranscript(translatedSegment, language: target)
-                translatedSegmentsBySource[cacheKey] = organizedSegment
+                cacheTranslatedSegment(organizedSegment, forKey: cacheKey)
                 translatedSegments.append(organizedSegment)
             }
 
@@ -967,6 +986,28 @@ final class TranslationSessionStore {
 
     private func translationCacheKey(segment: String, source: LanguageOption, target: LanguageOption) -> String {
         "\(source.id)\t\(target.id)\t\(selectedModel.id)\t\(segment)"
+    }
+
+    private func cacheTranslatedSegment(_ segment: String, forKey key: String) {
+        translatedSegmentsBySource[key] = segment
+        rememberTranslationCacheKey(key)
+
+        while translationCacheKeyOrder.count > Self.maxTranslationCacheEntries {
+            let removedKey = translationCacheKeyOrder.removeFirst()
+            if !translationCacheKeyOrder.contains(removedKey) {
+                translatedSegmentsBySource.removeValue(forKey: removedKey)
+            }
+        }
+    }
+
+    private func rememberTranslationCacheKey(_ key: String) {
+        translationCacheKeyOrder.removeAll { $0 == key }
+        translationCacheKeyOrder.append(key)
+    }
+
+    private func resetTranslationCache() {
+        translatedSegmentsBySource.removeAll()
+        translationCacheKeyOrder.removeAll()
     }
 
     private func requestTranslation(for line: CaptionLine, source: LanguageOption, target: LanguageOption) {

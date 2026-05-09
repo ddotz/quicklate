@@ -24,6 +24,7 @@ enum AppText {
     static let model = localized(english: "Model", korean: "모델")
     static let output = localized(english: "Output", korean: "출력")
     static let session = localized(english: "Session", korean: "세션")
+    static let transcript = localized(english: "Transcript", korean: "기록")
     static let liveOutput = localized(english: "Live Output", korean: "실시간 출력")
     static let library = localized(english: "Library", korean: "저장소")
     static let dubbing = localized(english: "Dubbing", korean: "더빙")
@@ -61,6 +62,14 @@ enum AppText {
     static let transcriptLintDescription = localized(
         english: "During silence, conservatively fixes transcription words when macOS spelling suggestions are confident. It does not remove repeated sentences or transcript content.",
         korean: "침묵 시간에 macOS 맞춤법 후보가 확실한 기록 단어만 보수적으로 고칩니다. 반복 문장이나 기록 내용은 제거하지 않습니다."
+    )
+    static let paragraphBreakSilenceInterval = localized(
+        english: "Paragraph Break Silence",
+        korean: "문단 개행 숨고르기"
+    )
+    static let paragraphBreakSilenceDescription = localized(
+        english: "When speech resumes after this much silence, the transcript starts a new paragraph.",
+        korean: "이 시간만큼 말이 멈춘 뒤 다시 시작되면 기록을 새 문단으로 나눕니다."
     )
     static let savedTranscripts = localized(english: "Saved Transcripts", korean: "저장된 기록")
     static let autoSave = localized(english: "Auto-save", korean: "자동 저장")
@@ -138,6 +147,13 @@ enum AppText {
 
     static func lineCount(_ count: Int) -> String {
         localized(english: "\(count) lines", korean: "\(count)줄")
+    }
+
+    static func seconds(_ seconds: Double) -> String {
+        let value = seconds.rounded(.toNearestOrAwayFromZero) == seconds
+            ? String(Int(seconds))
+            : String(format: "%.1f", seconds)
+        return localized(english: "\(value) sec", korean: "\(value)초")
     }
 
     static func startFailed(_ message: String) -> String {

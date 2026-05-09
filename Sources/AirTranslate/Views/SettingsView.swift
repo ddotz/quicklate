@@ -5,6 +5,25 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section(AppText.transcript) {
+                Stepper(
+                    value: $session.paragraphBreakSilenceInterval,
+                    in: 1...15,
+                    step: 0.5
+                ) {
+                    HStack {
+                        Text(AppText.paragraphBreakSilenceInterval)
+                        Spacer()
+                        Text(AppText.seconds(session.paragraphBreakSilenceInterval))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(AppText.paragraphBreakSilenceDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section(AppText.floatingCaptions) {
                 Picker(AppText.floatingDisplay, selection: $session.floatingCaptionDisplayMode) {
                     ForEach(FloatingCaptionDisplayMode.allCases) { mode in
