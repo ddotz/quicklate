@@ -5,6 +5,7 @@ struct SidebarView: View {
     @Bindable var session: TranslationSessionStore
     @State private var isLibraryPresented = false
     @State private var isConfigurationExpanded = false
+    @State private var openAIAPIKey = ""
 
     var body: some View {
         ScrollView {
@@ -196,6 +197,19 @@ struct SidebarView: View {
                             }
                         }
                     }
+
+                    GPTAPIKeyRow(
+                        apiKey: $openAIAPIKey,
+                        hasAPIKey: session.hasOpenAIAPIKey,
+                        save: {
+                            session.saveOpenAIAPIKey(openAIAPIKey)
+                            openAIAPIKey = ""
+                        },
+                        remove: {
+                            session.removeOpenAIAPIKey()
+                            openAIAPIKey = ""
+                        }
+                    )
 
                     Text(AppText.gptModelsDescription)
                         .font(.caption2)
@@ -468,6 +482,60 @@ private struct GPTModelMenuRow<MenuContent: View>: View {
         }
         .buttonStyle(.plain)
         .help(title)
+    }
+}
+
+private struct GPTAPIKeyRow: View {
+    @Binding var apiKey: String
+    let hasAPIKey: Bool
+    let save: () -> Void
+    let remove: () -> Void
+
+    private var trimmedAPIKey: String {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: "key.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(hasAPIKey ? Color.green : Color.secondary)
+                    .frame(width: 16)
+
+                SecureField(AppText.openAIAPIKeyPlaceholder, text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+
+                Button {
+                    save()
+                } label: {
+                    Image(systemName: "checkmark.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .disabled(trimmedAPIKey.isEmpty)
+                .help(AppText.saveOpenAIAPIKey)
+                .accessibilityLabel(AppText.saveOpenAIAPIKey)
+
+                Button {
+                    remove()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .disabled(!hasAPIKey)
+                .help(AppText.removeOpenAIAPIKey)
+                .accessibilityLabel(AppText.removeOpenAIAPIKey)
+            }
+
+            Text(hasAPIKey ? AppText.openAIAPIKeyConfigured : AppText.openAIAPIKeyNotConfigured)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(hasAPIKey ? Color.green : Color.secondary)
+                .padding(.leading, 24)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
