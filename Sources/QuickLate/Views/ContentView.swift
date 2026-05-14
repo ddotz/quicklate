@@ -5,12 +5,7 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            NavigationSplitView {
-                SidebarView(session: session)
-                    .navigationSplitViewColumnWidth(min: 240, ideal: 260, max: 300)
-            } detail: {
-                CaptionBoardView(session: session)
-            }
+            CommandWorkspaceView(session: session)
 
             if let toastMessage = session.toastMessage {
                 ToastMessageView(message: toastMessage)

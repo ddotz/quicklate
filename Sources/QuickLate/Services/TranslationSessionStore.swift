@@ -1637,7 +1637,7 @@ final class TranslationSessionStore {
         TranscriptTextProcessor.normalizedForComparison(text)
     }
 
-    private func visibleTranscript() -> String {
+    func visibleTranscript() -> String {
         let committed = committedSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         let partial = currentPartialText.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -1650,6 +1650,18 @@ final class TranslationSessionStore {
 
         let separator = pendingParagraphBreakBeforePartial ? "\n\n" : "\n"
         return committed + separator + partial
+    }
+
+    func visibleTranslatedText() -> String {
+        let translatedLines = lines
+            .map { $0.translatedText.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && $0 != AppText.translating }
+
+        if !translatedLines.isEmpty {
+            return translatedLines.joined(separator: "\n")
+        }
+
+        return floatingTranslationText
     }
 
     private func floatingVisibleSourceTranscript() -> String {
