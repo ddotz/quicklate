@@ -137,6 +137,7 @@ final class TranslationSessionStore {
     var showDockIcon = AppPresenceSettings.default.showDockIcon {
         didSet {
             persistSelectedSettings()
+            guard !isRestoringSelectedSettings else { return }
             AppPresenceController.shared.apply(AppPresenceSettings(showDockIcon: showDockIcon), activate: showDockIcon)
         }
     }
