@@ -1,6 +1,13 @@
 import AppKit
 import SwiftUI
 
+private enum FloatingCaptionFrameKey {
+    static let x = "floatingCaptionFrameX"
+    static let y = "floatingCaptionFrameY"
+    static let width = "floatingCaptionFrameWidth"
+    static let height = "floatingCaptionFrameHeight"
+}
+
 @MainActor
 final class FloatingCaptionWindowController: NSObject, NSWindowDelegate {
     static let visibilityDidChangeNotification = Notification.Name("QuickLateFloatingCaptionVisibilityDidChange")
@@ -31,7 +38,7 @@ final class FloatingCaptionWindowController: NSObject, NSWindowDelegate {
         let panel = window ?? makeWindow(session: session)
         panel.contentView = NSHostingView(rootView: FloatingCaptionWindowView(session: session))
         configure(panel)
-        if window == nil {
+        if window == nil, !restoreSavedFrame(panel) {
             positionForFirstOpen(panel)
         }
         window = panel
@@ -47,8 +54,19 @@ final class FloatingCaptionWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard notification.object as? NSWindow === window else { return }
+        saveFrame()
         window = nil
         Self.notifyVisibilityChanged()
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        guard notification.object as? NSWindow === window else { return }
+        saveFrame()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard notification.object as? NSWindow === window else { return }
+        saveFrame()
     }
 
     private func makeWindow(session: TranslationSessionStore) -> NSPanel {
@@ -80,13 +98,44 @@ final class FloatingCaptionWindowController: NSObject, NSWindowDelegate {
         panel.hasShadow = false
     }
 
-    private func positionForFirstOpen(_ panel: NSPanel) {
-        guard let visibleFrame = NSScreen.main?.visibleFrame else { return }
+    @discardableResult
+    private func positionForFirstOpen(_ panel: NSPanel) -> Bool {
+        guard let visibleFrame = NSScreen.main?.visibleFrame else { return false }
 
         let frame = panel.frame
         let x = visibleFrame.midX - frame.width / 2
         let y = visibleFrame.minY + min(180, visibleFrame.height * 0.18)
         panel.setFrameOrigin(NSPoint(x: x, y: y))
+        return true
+    }
+
+    private func saveFrame() {
+        guard let frame = window?.frame else { return }
+        let defaults = UserDefaults.standard
+        defaults.set(frame.origin.x, forKey: FloatingCaptionFrameKey.x)
+        defaults.set(frame.origin.y, forKey: FloatingCaptionFrameKey.y)
+        defaults.set(frame.size.width, forKey: FloatingCaptionFrameKey.width)
+        defaults.set(frame.size.height, forKey: FloatingCaptionFrameKey.height)
+    }
+
+    @discardableResult
+    private func restoreSavedFrame(_ panel: NSPanel) -> Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: FloatingCaptionFrameKey.x) != nil,
+              defaults.object(forKey: FloatingCaptionFrameKey.y) != nil,
+              defaults.object(forKey: FloatingCaptionFrameKey.width) != nil,
+              defaults.object(forKey: FloatingCaptionFrameKey.height) != nil else {
+            return false
+        }
+
+        let frame = NSRect(
+            x: defaults.double(forKey: FloatingCaptionFrameKey.x),
+            y: defaults.double(forKey: FloatingCaptionFrameKey.y),
+            width: max(360, defaults.double(forKey: FloatingCaptionFrameKey.width)),
+            height: max(110, defaults.double(forKey: FloatingCaptionFrameKey.height))
+        )
+        panel.setFrame(frame, display: false)
+        return true
     }
 
     private func closeOrphanFloatingWindows() {
