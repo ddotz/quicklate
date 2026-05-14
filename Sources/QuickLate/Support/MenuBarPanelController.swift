@@ -87,6 +87,7 @@ final class MenuBarPanelController: NSObject, NSPopoverDelegate {
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
         button.toolTip = AppText.menuBarTitle
+        E2ERuntimeReporter.report("statusItemInstalled")
     }
 
     private func refreshButtonAppearance() {

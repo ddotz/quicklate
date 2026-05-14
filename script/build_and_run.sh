@@ -51,7 +51,11 @@ else
 fi
 
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE"
+  local open_args=(-n)
+  if [[ -n "${QUICKLATE_E2E_READY_FILE:-}" ]]; then
+    open_args+=(--env "QUICKLATE_E2E_READY_FILE=$QUICKLATE_E2E_READY_FILE")
+  fi
+  /usr/bin/open "${open_args[@]}" "$APP_BUNDLE"
 }
 
 case "$MODE" in

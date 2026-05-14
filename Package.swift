@@ -13,6 +13,14 @@ let package = Package(
     targets: [
         .target(name: "QuickLateCore"),
         .executableTarget(
+            name: "QuickLateE2E",
+            dependencies: ["QuickLateCore"],
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("CoreGraphics")
+            ]
+        ),
+        .executableTarget(
             name: "QuickLate",
             dependencies: ["QuickLateCore"],
             linkerSettings: [
