@@ -98,6 +98,7 @@ enum AppText {
     static let downloadAndStart = localized(english: "Download & Start", korean: "다운로드 후 시작")
     static let checkingLanguagePacks = localized(english: "Checking language packs…", korean: "언어팩 확인 중…")
     static let languagePackNeeded = localized(english: "Language pack needed", korean: "언어팩 필요")
+    static let setupStatus = localized(english: "Setup status", korean: "설정 상태")
     static let retryDownload = localized(english: "Retry Download", korean: "다운로드 다시 시도")
     static let changeLanguagePair = localized(english: "Change language pair", korean: "언어쌍 변경")
     static let downloadModelAssets = localized(
