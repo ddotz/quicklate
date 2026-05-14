@@ -3,7 +3,7 @@
 **Date:** 2026-05-14
 **Source baseline:** cloned from `https://github.com/himomohi/AirTranslate`
 **Product name:** QuickLate
-**Status:** Design approved for planning; production implementation has not started.
+**Status:** Design approved; initial QuickLate cleanup/branding bootstrap has started in `/Users/hyuns/Code/quicklate`.
 
 ## 1. Objective
 
@@ -31,7 +31,7 @@ The user selected **scope C**: internal structure may be redesigned aggressively
 
 Use **QuickLate** everywhere in user-facing UI, menus, windows, documentation, and release surfaces.
 
-The upstream repository and current code still contain `AirTranslate` identifiers. During implementation, rename user-facing strings first, then decide whether deeper module/package renames are necessary and safe.
+The upstream repository used `AirTranslate` identifiers. During implementation, rename user-facing strings and SwiftPM module/product names to QuickLate while preserving attribution in `NOTICE`.
 
 ### Assets
 

@@ -59,7 +59,7 @@ case "$MODE" in
     /usr/bin/tccutil reset ScreenCapture "$BUNDLE_ID" || true
     /usr/bin/tccutil reset AudioCapture "$BUNDLE_ID" || true
     /usr/bin/tccutil reset SpeechRecognition "$BUNDLE_ID" || true
-    echo "Reset AirTranslate privacy grants. Relaunch and approve Screen Recording, System Audio Recording, and Speech Recognition once."
+    echo "Reset QuickLate privacy grants. Relaunch and approve Screen Recording, System Audio Recording, and Speech Recognition once."
     ;;
   run)
     open_app

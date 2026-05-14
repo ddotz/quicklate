@@ -52,7 +52,7 @@ PLIST
   <key>LSApplicationCategoryType</key>
   <string>$CATEGORY</string>
   <key>NSAudioCaptureUsageDescription</key>
-  <string>AirTranslate captures system audio only after you start capture so it can transcribe and translate what is playing on this Mac.</string>
+  <string>QuickLate captures system audio only after you start capture so it can transcribe and translate what is playing on this Mac.</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSHumanReadableCopyright</key>
@@ -61,17 +61,17 @@ PLIST
   else
     cat <<PLIST
   <key>NSAppleEventsUsageDescription</key>
-  <string>AirTranslate does not automate other apps.</string>
+  <string>QuickLate does not automate other apps.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>AirTranslate may use speech services that require audio recognition permission.</string>
+  <string>QuickLate may use speech services that require audio recognition permission.</string>
   <key>NSSystemAudioCaptureUsageDescription</key>
-  <string>AirTranslate captures Mac system audio so it can transcribe and translate what is playing.</string>
+  <string>QuickLate captures Mac system audio so it can transcribe and translate what is playing.</string>
 PLIST
   fi
 
   cat <<PLIST
   <key>NSSpeechRecognitionUsageDescription</key>
-  <string>AirTranslate uses speech recognition to convert captured Mac audio into live captions and translations.</string>
+  <string>QuickLate uses speech recognition to convert captured Mac audio into live captions and translations.</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
 </dict>

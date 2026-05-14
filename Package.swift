@@ -3,18 +3,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "AirTranslate",
+    name: "QuickLate",
     platforms: [
         .macOS(.v26)
     ],
     products: [
-        .executable(name: "AirTranslate", targets: ["AirTranslate"])
+        .executable(name: "QuickLate", targets: ["QuickLate"])
     ],
     targets: [
-        .target(name: "AirTranslateCore"),
+        .target(name: "QuickLateCore"),
         .executableTarget(
-            name: "AirTranslate",
-            dependencies: ["AirTranslateCore"],
+            name: "QuickLate",
+            dependencies: ["QuickLateCore"],
             linkerSettings: [
                 .linkedFramework("AVFAudio"),
                 .linkedFramework("AudioToolbox"),
@@ -26,8 +26,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "AirTranslateCoreTests",
-            dependencies: ["AirTranslateCore"]
+            name: "QuickLateCoreTests",
+            dependencies: ["QuickLateCore"]
         )
     ]
 )
