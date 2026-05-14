@@ -109,6 +109,12 @@ enum AppText {
         korean: "번역 언어팩"
     )
     static let openAIAPIKey = localized(english: "OpenAI API Key", korean: "OpenAI API 키")
+    static let appPresence = localized(english: "App Presence", korean: "앱 표시")
+    static let showDockIcon = localized(english: "Show Dock icon", korean: "Dock 아이콘 표시")
+    static let showDockIconDescription = localized(
+        english: "QuickLate is menu-bar only by default. Turn this on if you want QuickLate to appear in the Dock.",
+        korean: "QuickLate는 기본적으로 메뉴바에서만 표시됩니다. Dock에도 표시하려면 켜세요."
+    )
     static let openAIAPIKeyDescription = localized(
         english: "Enter your API key in the app. QuickLate stores it in macOS Keychain and uses it only for OpenAI translation.",
         korean: "앱에서 API 키를 입력하세요. QuickLate는 키를 macOS Keychain에 저장하고 OpenAI 번역에만 사용합니다."

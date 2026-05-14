@@ -1,4 +1,5 @@
 import AppKit
+import QuickLateCore
 import SwiftUI
 
 @main
@@ -38,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let appIcon = NSImage(named: "AppIcon") {
             NSApp.applicationIconImage = appIcon
         }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        let showDockIcon = UserDefaults.standard.bool(forKey: "showDockIcon")
+        AppPresenceController.shared.apply(AppPresenceSettings(showDockIcon: showDockIcon), activate: showDockIcon)
     }
 }

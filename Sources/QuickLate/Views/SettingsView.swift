@@ -35,6 +35,14 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section(AppText.appPresence) {
+                Toggle(AppText.showDockIcon, isOn: $session.showDockIcon)
+
+                Text(AppText.showDockIconDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section(AppText.transcript) {
                 Picker(AppText.sessionLength, selection: $session.sessionDurationMode) {
                     ForEach(SessionDurationMode.allCases) { mode in

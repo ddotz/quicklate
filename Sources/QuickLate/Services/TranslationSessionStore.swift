@@ -18,6 +18,7 @@ private enum SettingsKey {
     static let paragraphBreakSilenceInterval = "paragraphBreakSilenceInterval"
     static let savedTranscriptContentMode = "savedTranscriptContentMode"
     static let sessionDurationMode = "sessionDurationMode"
+    static let showDockIcon = "showDockIcon"
 }
 
 private struct TranslationRequest {
@@ -132,6 +133,12 @@ final class TranslationSessionStore {
     }
     var sessionDurationMode = SessionDurationMode.standard {
         didSet { persistSelectedSettings() }
+    }
+    var showDockIcon = AppPresenceSettings.default.showDockIcon {
+        didSet {
+            persistSelectedSettings()
+            AppPresenceController.shared.apply(AppPresenceSettings(showDockIcon: showDockIcon), activate: showDockIcon)
+        }
     }
     var statusMessage = AppText.ready
     var toastMessage: String?
@@ -760,6 +767,9 @@ final class TranslationSessionStore {
            let durationMode = SessionDurationMode(rawValue: durationModeID) {
             sessionDurationMode = durationMode
         }
+        if defaults.object(forKey: SettingsKey.showDockIcon) != nil {
+            showDockIcon = defaults.bool(forKey: SettingsKey.showDockIcon)
+        }
     }
 
     private func persistSelectedSettings() {
@@ -779,6 +789,7 @@ final class TranslationSessionStore {
         defaults.set(paragraphBreakSilenceInterval, forKey: SettingsKey.paragraphBreakSilenceInterval)
         defaults.set(savedTranscriptContentMode.id, forKey: SettingsKey.savedTranscriptContentMode)
         defaults.set(sessionDurationMode.id, forKey: SettingsKey.sessionDurationMode)
+        defaults.set(showDockIcon, forKey: SettingsKey.showDockIcon)
     }
 
     private func floatingCaptionText(from text: String?) -> String {
