@@ -164,6 +164,7 @@ final class TranslationSessionStore {
     private let foundationTranscriptPolisher = FoundationTranscriptPolisher()
     private let speechOutput = TranslatedSpeechOutput()
     private let openAIRealtimeAudioOutput = OpenAIRealtimeAudioOutput()
+    private let assetDownloadCoordinator = AssetDownloadCoordinator()
     private let spellChecker = NSSpellChecker.shared
     private let spellDocumentTag = NSSpellChecker.uniqueSpellDocumentTag()
     private var audioSampleCount = 0
@@ -396,6 +397,26 @@ final class TranslationSessionStore {
         modelAvailabilityByModelID[model.id] ?? ModelAvailability.checking(for: model)
     }
 
+    var applePreflightState: AssetPreflightState {
+        AssetPreflightState(
+            speech: assetDownloadCoordinator.state(from: modelAvailability(for: .appleSpeechOnly)),
+            translation: assetDownloadCoordinator.state(from: modelAvailability(for: .appleOnDevice)),
+            startIntent: assetDownloadCoordinator.startIntent
+        )
+    }
+
+    func requestStartFromWorkspace() {
+        switch applePreflightState.primaryAction {
+        case .start:
+            start()
+        case .downloadAndStart, .retryDownload:
+            assetDownloadCoordinator.rememberStartAfterDownload()
+            downloadModelAssets(for: .appleSystem)
+        case .changeLanguagePair, .openSystemSettings, .wait:
+            statusMessage = AppText.languagePackNeeded
+        }
+    }
+
     func downloadModelAssets(for model: IntelligenceModel) {
         guard modelAvailability(for: model).state.canDownload else { return }
 
@@ -414,7 +435,12 @@ final class TranslationSessionStore {
                     target: targetLanguage
                 )
                 refreshModelAvailability()
+                if assetDownloadCoordinator.startIntent == .startAfterDownload {
+                    assetDownloadCoordinator.clearStartIntent()
+                    start()
+                }
             } catch {
+                assetDownloadCoordinator.clearStartIntent()
                 modelAvailabilityByModelID[model.id] = ModelAvailability(
                     state: .failed,
                     detail: error.localizedDescription

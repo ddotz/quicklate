@@ -95,6 +95,11 @@ enum AppText {
     static let modelStatusUnavailable = localized(english: "Unavailable", korean: "사용 불가", japanese: "利用不可", chineseSimplified: "不可用")
     static let modelStatusFailed = localized(english: "Check Failed", korean: "확인 실패", japanese: "確認失敗", chineseSimplified: "检查失败")
     static let download = localized(english: "Download", korean: "다운로드", japanese: "ダウンロード", chineseSimplified: "下载")
+    static let downloadAndStart = localized(english: "Download & Start", korean: "다운로드 후 시작")
+    static let checkingLanguagePacks = localized(english: "Checking language packs…", korean: "언어팩 확인 중…")
+    static let languagePackNeeded = localized(english: "Language pack needed", korean: "언어팩 필요")
+    static let retryDownload = localized(english: "Retry Download", korean: "다운로드 다시 시도")
+    static let changeLanguagePair = localized(english: "Change language pair", korean: "언어쌍 변경")
     static let downloadModelAssets = localized(
         english: "Download model assets",
         korean: "모델 자산 다운로드"
