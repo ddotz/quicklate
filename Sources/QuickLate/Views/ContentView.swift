@@ -26,15 +26,14 @@ private struct ToastMessageView: View {
     var body: some View {
         Label(message, systemImage: "checkmark.circle.fill")
             .font(.callout.weight(.semibold))
-            .foregroundStyle(.primary)
+            .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(QuickLatePalette.surfaceRaised, in: Capsule())
+            .background(QuickLatePalette.panelRaised, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(QuickLatePalette.borderStrong)
             }
-            .shadow(color: QuickLatePalette.brandBlue.opacity(0.22), radius: 18, y: 8)
             .accessibilityAddTraits(.updatesFrequently)
     }
 }

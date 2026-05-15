@@ -10,7 +10,7 @@ struct CollapsibleSetupRailView: View {
         VStack(spacing: 12) {
             RailIconButton(
                 systemImage: "slider.horizontal.3",
-                accentColor: state.requiresAttention ? QuickLatePalette.attention : QuickLatePalette.brandCyan,
+                accentColor: state.requiresAttention ? QuickLatePalette.attention : QuickLatePalette.brandBlue,
                 showsAttention: state.requiresAttention,
                 action: toggleExpanded
             )
@@ -30,20 +30,7 @@ struct CollapsibleSetupRailView: View {
         }
         .padding(.vertical, 12)
         .frame(width: 58)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            QuickLatePalette.surfaceRaised,
-                            QuickLatePalette.brandBlue.opacity(0.10),
-                            QuickLatePalette.surfaceDeep
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-        }
+        .background(QuickLatePalette.panelRaised, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(QuickLatePalette.border, lineWidth: 1)
@@ -54,7 +41,6 @@ struct CollapsibleSetupRailView: View {
                     .offset(x: -66)
             }
         }
-        .shadow(color: QuickLatePalette.brandBlue.opacity(0.14), radius: 24, y: 12)
     }
 }
 
@@ -80,7 +66,6 @@ private struct RailIconButton: View {
                         Circle()
                             .fill(QuickLatePalette.attention)
                             .frame(width: 8, height: 8)
-                            .shadow(color: QuickLatePalette.attention.opacity(0.65), radius: 7)
                             .offset(x: -5, y: 5)
                     }
                 }
@@ -119,21 +104,11 @@ private struct SetupRailPeekView: View {
         }
         .padding(15)
         .frame(width: 250, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [QuickLatePalette.attention.opacity(0.16), QuickLatePalette.surfaceRaised, QuickLatePalette.surfaceDeep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
+        .background(QuickLatePalette.panelRaised, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(QuickLatePalette.attention.opacity(0.34), lineWidth: 1)
         }
-        .shadow(color: QuickLatePalette.attention.opacity(0.18), radius: 26, y: 14)
     }
 }
 
@@ -144,14 +119,7 @@ private struct PeekPrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
-            .background(
-                LinearGradient(
-                    colors: [QuickLatePalette.brandBlue, QuickLatePalette.brandIndigo],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
+            .background(QuickLatePalette.brandBlue, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.18, dampingFraction: 0.78), value: configuration.isPressed)
     }

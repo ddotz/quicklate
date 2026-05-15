@@ -66,7 +66,7 @@ struct CommandWorkspaceView: View {
                     TopBarSecondaryActionLabel(
                         title: AppText.floatingCaptions,
                         systemImage: isFloatingCaptionVisible ? "captions.bubble.fill" : "captions.bubble",
-                        accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.brandCyan
+                        accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.brandBlue
                     )
                 }
                 .buttonStyle(TopBarPressButtonStyle())
@@ -86,36 +86,11 @@ struct CommandWorkspaceView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            QuickLatePalette.brandBlue.opacity(0.20),
-                            QuickLatePalette.surfaceRaised,
-                            QuickLatePalette.brandViolet.opacity(0.12)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
+        .background(QuickLatePalette.panelRaised, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            QuickLatePalette.brandCyan.opacity(0.46),
-                            QuickLatePalette.borderStrong,
-                            QuickLatePalette.brandViolet.opacity(0.32)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.1
-                )
+                .strokeBorder(QuickLatePalette.borderStrong, lineWidth: 1)
         }
-        .shadow(color: QuickLatePalette.brandBlue.opacity(0.18), radius: 28, y: 16)
     }
 
     private var primaryActionTitle: String {
@@ -201,21 +176,11 @@ private struct TopBarPrimaryActionLabel: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 11)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [accentColor, QuickLatePalette.brandIndigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
+            .background(accentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.26), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
             }
-            .shadow(color: accentColor.opacity(0.32), radius: 18, y: 8)
     }
 }
 

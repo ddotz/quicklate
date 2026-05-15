@@ -17,7 +17,6 @@ struct TranscriptPaneView: View {
                         Circle()
                             .fill(accentColor)
                             .frame(width: 8, height: 8)
-                            .shadow(color: accentColor.opacity(0.65), radius: 8)
                         Text(title)
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
@@ -66,36 +65,11 @@ struct TranscriptPaneView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            accentColor.opacity(isTranslation ? 0.16 : 0.12),
-                            QuickLatePalette.surface,
-                            QuickLatePalette.surfaceDeep
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        }
+        .background(QuickLatePalette.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            accentColor.opacity(0.42),
-                            QuickLatePalette.border,
-                            Color.white.opacity(0.08)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.15
-                )
+                .strokeBorder(accentColor.opacity(isTranslation ? 0.28 : 0.22), lineWidth: 1)
         }
-        .shadow(color: accentColor.opacity(isTranslation ? 0.16 : 0.10), radius: 26, y: 14)
     }
 
     private func copyText() {
