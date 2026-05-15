@@ -50,4 +50,15 @@ struct AssetPreflightStateTests {
         #expect(state.primaryAction == .retryDownload)
         #expect(state.startIntent == .none)
     }
+
+    @Test
+    func failedInstallStatesAllowRetryDownloadRequest() {
+        #expect(AssetInstallState.downloadRequired.allowsDownloadRequest)
+        #expect(AssetInstallState.failed.allowsDownloadRequest)
+        #expect(!AssetInstallState.unsupported.allowsDownloadRequest)
+        #expect(!AssetInstallState.unavailable.allowsDownloadRequest)
+        #expect(!AssetInstallState.installed.allowsDownloadRequest)
+        #expect(!AssetInstallState.checking.allowsDownloadRequest)
+        #expect(!AssetInstallState.downloading.allowsDownloadRequest)
+    }
 }

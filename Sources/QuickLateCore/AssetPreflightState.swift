@@ -6,6 +6,15 @@ public enum AssetInstallState: Equatable, Sendable {
     case failed
     case unsupported
     case unavailable
+
+    public var allowsDownloadRequest: Bool {
+        switch self {
+        case .downloadRequired, .failed:
+            true
+        case .checking, .installed, .downloading, .unsupported, .unavailable:
+            false
+        }
+    }
 }
 
 public enum AssetStartIntent: Equatable, Sendable {

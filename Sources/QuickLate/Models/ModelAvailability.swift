@@ -1,4 +1,5 @@
 import Foundation
+import QuickLateCore
 
 enum ModelAvailabilityState {
     case checking
@@ -29,7 +30,26 @@ enum ModelAvailabilityState {
     }
 
     var canDownload: Bool {
-        self == .downloadRequired
+        assetInstallState.allowsDownloadRequest
+    }
+
+    private var assetInstallState: AssetInstallState {
+        switch self {
+        case .checking:
+            .checking
+        case .installed:
+            .installed
+        case .downloadRequired:
+            .downloadRequired
+        case .downloading:
+            .downloading
+        case .unsupported:
+            .unsupported
+        case .unavailable:
+            .unavailable
+        case .failed:
+            .failed
+        }
     }
 }
 
