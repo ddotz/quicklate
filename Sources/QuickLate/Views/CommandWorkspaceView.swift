@@ -1,3 +1,4 @@
+import QuickLateCore
 import SwiftUI
 
 struct CommandWorkspaceView: View {
@@ -47,41 +48,55 @@ struct CommandWorkspaceView: View {
     }
 
     private var topBar: some View {
-        HStack(spacing: 20) {
-            QuickLateWordmarkView()
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(spacing: 20) {
+                QuickLateWordmarkView()
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(AppText.liveTranslationWorkspace)
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
-                    .foregroundStyle(QuickLatePalette.inkDeep)
-                Text(viewModel.session.languageSummary)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(QuickLatePalette.slate)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(AppText.liveTranslationWorkspace)
+                        .font(.system(size: 28, weight: .semibold, design: .rounded))
+                        .foregroundStyle(QuickLatePalette.inkDeep)
+                    Text(viewModel.session.languageSummary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(QuickLatePalette.slate)
+                }
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 12) {
+                    Button(action: showFloatingCaptions) {
+                        TopBarSecondaryActionLabel(
+                            title: AppText.floatingCaptions,
+                            systemImage: isFloatingCaptionVisible ? "captions.bubble.fill" : "captions.bubble",
+                            accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.primary
+                        )
+                    }
+                    .buttonStyle(TopBarPressButtonStyle())
+                    .help(AppText.showFloatingCaptions)
+
+                    Button {
+                        viewModel.requestStart()
+                    } label: {
+                        TopBarPrimaryActionLabel(
+                            title: primaryActionTitle,
+                            systemImage: primaryActionSystemImage,
+                            accentColor: primaryActionAccentColor
+                        )
+                    }
+                    .buttonStyle(TopBarPressButtonStyle())
+                }
             }
 
-            Spacer(minLength: 0)
+            HStack(alignment: .center, spacing: 12) {
+                WorkspaceProcessingEnginePicker(
+                    selection: processingEngineBinding,
+                    isDisabled: viewModel.session.isRunning
+                )
 
-            HStack(spacing: 12) {
-                Button(action: showFloatingCaptions) {
-                    TopBarSecondaryActionLabel(
-                        title: AppText.floatingCaptions,
-                        systemImage: isFloatingCaptionVisible ? "captions.bubble.fill" : "captions.bubble",
-                        accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.primary
-                    )
-                }
-                .buttonStyle(TopBarPressButtonStyle())
-                .help(AppText.showFloatingCaptions)
+                Divider()
+                    .frame(height: 34)
 
-                Button {
-                    viewModel.requestStart()
-                } label: {
-                    TopBarPrimaryActionLabel(
-                        title: primaryActionTitle,
-                        systemImage: primaryActionSystemImage,
-                        accentColor: primaryActionAccentColor
-                    )
-                }
-                .buttonStyle(TopBarPressButtonStyle())
+                languageControls
             }
         }
         .padding(.horizontal, 32)
@@ -91,6 +106,98 @@ struct CommandWorkspaceView: View {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous)
                 .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+    }
+
+    @ViewBuilder
+    private var languageControls: some View {
+        switch languageControlMode {
+        case .autoDetectTargetOnly:
+            HStack(spacing: 10) {
+                AutoDetectLanguageBadge()
+
+                Image(systemName: "arrow.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(QuickLatePalette.slate)
+
+                LanguageMenuChip(
+                    title: AppText.preferredLanguageShort,
+                    systemImage: "globe",
+                    selection: targetLanguageBinding,
+                    isDisabled: viewModel.session.isRunning
+                )
+            }
+            .help(AppText.openAILanguageModeDescription)
+        case .manualSourceAndTarget:
+            HStack(spacing: 8) {
+                LanguageMenuChip(
+                    title: AppText.from,
+                    systemImage: "waveform",
+                    selection: sourceLanguageBinding,
+                    isDisabled: viewModel.session.isRunning
+                )
+
+                Button(action: swapLanguages) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(viewModel.session.isRunning ? QuickLatePalette.steel : QuickLatePalette.primary)
+                        .frame(width: 34, height: 34)
+                        .background(QuickLatePalette.primarySoft, in: Circle())
+                }
+                .buttonStyle(TopBarPressButtonStyle())
+                .disabled(viewModel.session.isRunning)
+                .help(AppText.swapLanguages)
+                .accessibilityLabel(AppText.swapLanguages)
+
+                LanguageMenuChip(
+                    title: AppText.to,
+                    systemImage: "text.bubble",
+                    selection: targetLanguageBinding,
+                    isDisabled: viewModel.session.isRunning
+                )
+            }
+            .help(AppText.languageSummary(
+                source: viewModel.session.sourceLanguage.localizedTitle,
+                target: viewModel.session.targetLanguage.localizedTitle
+            ))
+        }
+    }
+
+    private var languageControlMode: TranslationLanguageControlMode {
+        TranslationLanguageControlMode.resolved(
+            usesOpenAIRealtimeTranslation: viewModel.session.isUsingOpenAIRealtimeTranslation
+        )
+    }
+
+    private var processingEngineBinding: Binding<WorkspaceProcessingEngine> {
+        Binding(
+            get: { WorkspaceProcessingEngine.current(for: viewModel.session) },
+            set: { engine in
+                guard !viewModel.session.isRunning else { return }
+                switch engine {
+                case .apple:
+                    viewModel.session.useAppleDefaultMode()
+                case .gptAuto:
+                    viewModel.session.useGPTRealtimeMode()
+                    if !viewModel.session.hasOpenAIAPIKey {
+                        viewModel.session.statusMessage = AppText.openAIAPIKeyRequiredForGPTMode
+                    }
+                }
+            }
+        )
+    }
+
+    private var sourceLanguageBinding: Binding<LanguageOption> {
+        Binding(
+            get: { viewModel.session.sourceLanguage },
+            set: { viewModel.session.sourceLanguage = $0 }
+        )
+    }
+
+    private var targetLanguageBinding: Binding<LanguageOption> {
+        Binding(
+            get: { viewModel.session.targetLanguage },
+            set: { viewModel.session.targetLanguage = $0 }
+        )
     }
 
     private var primaryActionTitle: String {
@@ -141,8 +248,140 @@ struct CommandWorkspaceView: View {
         syncFloatingCaptionVisibility()
     }
 
+    private func swapLanguages() {
+        guard !viewModel.session.isRunning else { return }
+        let sourceLanguage = viewModel.session.sourceLanguage
+        viewModel.session.sourceLanguage = viewModel.session.targetLanguage
+        viewModel.session.targetLanguage = sourceLanguage
+    }
+
     private func syncFloatingCaptionVisibility() {
         isFloatingCaptionVisible = FloatingCaptionWindowController.isOpen
+    }
+}
+
+private enum WorkspaceProcessingEngine: String, CaseIterable, Identifiable {
+    case apple
+    case gptAuto
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .apple:
+            AppText.appleProcessingMode
+        case .gptAuto:
+            AppText.localized(
+                english: "GPT Auto",
+                korean: "GPT 자동",
+                japanese: "GPT自動",
+                chineseSimplified: "GPT 自动"
+            )
+        }
+    }
+
+    @MainActor
+    static func current(for session: TranslationSessionStore) -> WorkspaceProcessingEngine {
+        session.isUsingOpenAIRealtimeTranslation ? .gptAuto : .apple
+    }
+}
+
+private struct WorkspaceProcessingEnginePicker: View {
+    @Binding var selection: WorkspaceProcessingEngine
+    let isDisabled: Bool
+
+    var body: some View {
+        Picker(AppText.model, selection: $selection) {
+            ForEach(WorkspaceProcessingEngine.allCases) { engine in
+                Text(engine.title).tag(engine)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 176)
+        .disabled(isDisabled)
+        .accessibilityLabel(AppText.model)
+    }
+}
+
+private struct AutoDetectLanguageBadge: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "sparkles")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(QuickLatePalette.primary)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(AppText.autoDetectInput)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                Text(AppText.autoDetectShort)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(QuickLatePalette.primary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(QuickLatePalette.primarySoft, in: Capsule())
+        .overlay {
+            Capsule()
+                .strokeBorder(QuickLatePalette.primary.opacity(0.22), lineWidth: 1)
+        }
+    }
+}
+
+private struct LanguageMenuChip: View {
+    let title: String
+    let systemImage: String
+    @Binding var selection: LanguageOption
+    let isDisabled: Bool
+
+    var body: some View {
+        Menu {
+            ForEach(LanguageOption.supported) { language in
+                Button(language.localizedTitle) {
+                    selection = language
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(QuickLatePalette.primary)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(QuickLatePalette.slate)
+                        .lineLimit(1)
+
+                    Text(selection.localizedTitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(QuickLatePalette.inkDeep)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                }
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(QuickLatePalette.steel)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(QuickLatePalette.surfaceSoft, in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+            }
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .accessibilityLabel(title)
+        .accessibilityValue(selection.localizedTitle)
     }
 }
 
