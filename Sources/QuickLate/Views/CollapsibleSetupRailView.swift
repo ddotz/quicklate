@@ -10,7 +10,7 @@ struct CollapsibleSetupRailView: View {
         VStack(spacing: 12) {
             RailIconButton(
                 systemImage: "slider.horizontal.3",
-                accentColor: state.requiresAttention ? QuickLatePalette.attention : QuickLatePalette.brandBlue,
+                accentColor: state.requiresAttention ? QuickLatePalette.attention : QuickLatePalette.primary,
                 showsAttention: state.requiresAttention,
                 action: toggleExpanded
             )
@@ -19,7 +19,7 @@ struct CollapsibleSetupRailView: View {
 
             RailIconButton(
                 systemImage: "arrow.down.circle.fill",
-                accentColor: QuickLatePalette.brandBlue,
+                accentColor: QuickLatePalette.primary,
                 showsAttention: false,
                 action: download
             )
@@ -28,17 +28,17 @@ struct CollapsibleSetupRailView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 12)
-        .frame(width: 58)
-        .background(QuickLatePalette.panelRaised, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(.vertical, 16)
+        .frame(width: 64)
+        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(QuickLatePalette.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
         .overlay(alignment: .trailing) {
             if state.shouldPeek {
                 SetupRailPeekView(download: download)
-                    .offset(x: -66)
+                    .offset(x: -72)
             }
         }
     }
@@ -53,20 +53,20 @@ private struct RailIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.callout.weight(.semibold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(accentColor)
-                .frame(width: 42, height: 38)
-                .background(accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(width: 44, height: 44)
+                .background(QuickLatePalette.primarySoft, in: Circle())
                 .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(accentColor.opacity(0.30), lineWidth: 1)
+                    Circle()
+                        .strokeBorder(accentColor.opacity(0.22), lineWidth: 1)
                 }
                 .overlay(alignment: .topTrailing) {
                     if showsAttention {
                         Circle()
                             .fill(QuickLatePalette.attention)
                             .frame(width: 8, height: 8)
-                            .offset(x: -5, y: 5)
+                            .offset(x: -4, y: 4)
                     }
                 }
         }
@@ -77,9 +77,9 @@ private struct RailIconButton: View {
 private struct RailPressButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .brightness(configuration.isPressed ? 0.05 : 0)
-            .animation(.spring(response: 0.18, dampingFraction: 0.78), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -87,27 +87,27 @@ private struct SetupRailPeekView: View {
     let download: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(QuickLatePalette.attention)
                     .frame(width: 8, height: 8)
                 Text(AppText.languagePackNeeded)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
             }
             Text(AppText.downloadModelAssets)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(QuickLatePalette.textMuted)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(QuickLatePalette.slate)
             Button(AppText.downloadAndStart, action: download)
                 .buttonStyle(PeekPrimaryButtonStyle())
         }
-        .padding(15)
-        .frame(width: 250, alignment: .leading)
-        .background(QuickLatePalette.panelRaised, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(24)
+        .frame(width: 260, alignment: .leading)
+        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(QuickLatePalette.attention.opacity(0.34), lineWidth: 1)
+            RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairline, lineWidth: 1)
         }
     }
 }
@@ -115,12 +115,13 @@ private struct SetupRailPeekView: View {
 private struct PeekPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.callout.weight(.bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(QuickLatePalette.brandBlue, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(response: 0.18, dampingFraction: 0.78), value: configuration.isPressed)
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(QuickLatePalette.onPrimary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(QuickLatePalette.primary, in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }

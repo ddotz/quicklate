@@ -29,6 +29,8 @@ mkdir -p "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
 cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_RESOURCES/AppIcon.icns"
+cp "$ROOT_DIR/Resources/MenuBarIcon.png" "$APP_RESOURCES/MenuBarIcon.png"
+cp "$ROOT_DIR/Resources/QuickLateLogo.png" "$APP_RESOURCES/QuickLateLogo.png"
 
 "$SCRIPT_DIR/write_info_plist.sh" "$INFO_PLIST" local
 

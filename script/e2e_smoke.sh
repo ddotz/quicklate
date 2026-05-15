@@ -99,6 +99,8 @@ log_step "bundle metadata check"
   /usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
+  test -f "$ROOT_DIR/dist/$APP_NAME.app/Contents/Resources/MenuBarIcon.png"
+  test -f "$ROOT_DIR/dist/$APP_NAME.app/Contents/Resources/QuickLateLogo.png"
   /usr/libexec/PlistBuddy -c 'Print :NSSystemAudioCaptureUsageDescription' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
 } | tee "$EVIDENCE_DIR/bundle-metadata.log"
 

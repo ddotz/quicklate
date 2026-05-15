@@ -10,20 +10,20 @@ struct TranscriptPaneView: View {
     let showFloatingCaptions: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 7) {
                     HStack(spacing: 8) {
                         Circle()
                             .fill(accentColor)
                             .frame(width: 8, height: 8)
                         Text(title)
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .foregroundStyle(QuickLatePalette.inkDeep)
                     }
                     Text(subtitle)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(QuickLatePalette.textMuted)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(QuickLatePalette.slate)
                         .lineLimit(2)
                 }
                 Spacer(minLength: 0)
@@ -31,14 +31,10 @@ struct TranscriptPaneView: View {
                     copyText()
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(accentColor)
-                        .frame(width: 32, height: 32)
-                        .background(accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(accentColor.opacity(0.28), lineWidth: 1)
-                        }
+                        .frame(width: 40, height: 40)
+                        .background(QuickLatePalette.primarySoft, in: Circle())
                 }
                 .buttonStyle(TranscriptPaneIconButtonStyle())
                 .help(AppText.copy)
@@ -47,15 +43,15 @@ struct TranscriptPaneView: View {
 
             ScrollView {
                 Text(text.isEmpty ? AppText.noCaptionsYet : text)
-                    .font(isTranslation ? .title3.weight(.semibold) : .title3.weight(.medium))
-                    .foregroundStyle(text.isEmpty ? QuickLatePalette.textMuted : .white)
+                    .font(isTranslation ? .system(size: 24, weight: .semibold, design: .rounded) : .system(size: 24, weight: .medium, design: .rounded))
+                    .foregroundStyle(text.isEmpty ? QuickLatePalette.steel : QuickLatePalette.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
-                    .lineSpacing(3)
+                    .lineSpacing(4)
                     .padding(.top, 6)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Button(AppText.copy, action: copyText)
                     .buttonStyle(TranscriptPaneTextButtonStyle(accentColor: accentColor, isPrimary: false))
                 Button(AppText.floatingCaptions, action: showFloatingCaptions)
@@ -63,12 +59,12 @@ struct TranscriptPaneView: View {
             }
             .controlSize(.small)
         }
-        .padding(18)
+        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(QuickLatePalette.panel, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(accentColor.opacity(isTranslation ? 0.28 : 0.22), lineWidth: 1)
+            RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
     }
 
@@ -83,9 +79,9 @@ struct TranscriptPaneView: View {
 private struct TranscriptPaneIconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.9 : 1)
-            .opacity(configuration.isPressed ? 0.74 : 1)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.78 : 1)
+            .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
     }
 }
 
@@ -95,19 +91,17 @@ private struct TranscriptPaneTextButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(isPrimary ? .white : accentColor)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                isPrimary ? accentColor.opacity(0.28) : Color.white.opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-            )
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(isPrimary ? QuickLatePalette.onPrimary : QuickLatePalette.inkDeep)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(isPrimary ? accentColor : Color.clear, in: Capsule())
             .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(isPrimary ? accentColor.opacity(0.40) : Color.white.opacity(0.12), lineWidth: 1)
+                Capsule()
+                    .strokeBorder(isPrimary ? Color.clear : QuickLatePalette.hairline, lineWidth: isPrimary ? 0 : 2)
             }
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.spring(response: 0.18, dampingFraction: 0.78), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }

@@ -21,7 +21,7 @@ struct MenuBarStatusView: View {
         }
         .padding(16)
         .frame(width: 360)
-        .background(.regularMaterial)
+        .background(QuickLatePalette.surface)
         .onAppear {
             syncFloatingCaptionVisibility()
         }
@@ -40,11 +40,12 @@ struct MenuBarStatusView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(AppText.floatingCaptions)
-                    .font(.headline)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
 
                 Text(session.statusMessage)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(QuickLatePalette.slate)
                     .lineLimit(2)
             }
 
@@ -256,7 +257,7 @@ private struct ControlSectionHeader: View {
     var body: some View {
         Label(title, systemImage: systemImage)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(QuickLatePalette.slate)
     }
 }
 
@@ -272,13 +273,13 @@ private struct IconPanelButtonLabel: View {
             Image(systemName: systemImage)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(accentColor)
-                .frame(width: 30, height: 30)
-                .background(accentColor.opacity(isSelected ? 0.2 : 0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 32, height: 32)
+                .background(QuickLatePalette.primarySoft, in: Circle())
 
             VStack(spacing: 1) {
                 Text(title)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(QuickLatePalette.inkDeep)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
 
@@ -292,12 +293,12 @@ private struct IconPanelButtonLabel: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, minHeight: 76)
-        .background(.quaternary.opacity(isSelected ? 0.7 : 0.42), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(isSelected ? QuickLatePalette.primarySoft : QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(accentColor.opacity(isSelected ? 0.48 : 0.14), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(isSelected ? accentColor.opacity(0.48) : QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -316,15 +317,15 @@ private struct IconChoiceLabel: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
-        .foregroundStyle(isSelected ? Color.white : Color.primary)
+        .foregroundStyle(isSelected ? QuickLatePalette.onPrimary : QuickLatePalette.inkDeep)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, minHeight: 66)
-        .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.16), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(isSelected ? QuickLatePalette.primary : QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(isSelected ? Color.accentColor.opacity(0.7) : Color.primary.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(isSelected ? QuickLatePalette.primaryDeep.opacity(0.7) : QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -337,18 +338,18 @@ private struct IconMenuLabel: View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(QuickLatePalette.primary)
                 .frame(width: 32, height: 32)
-                .background(Color.accentColor.opacity(0.13), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(QuickLatePalette.primarySoft, in: Circle())
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(QuickLatePalette.slate)
 
                 Text(value)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(QuickLatePalette.inkDeep)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
@@ -357,15 +358,15 @@ private struct IconMenuLabel: View {
 
             Image(systemName: "chevron.up.chevron.down")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(QuickLatePalette.slate)
         }
         .padding(10)
         .frame(maxWidth: .infinity, minHeight: 58)
-        .background(Color.secondary.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

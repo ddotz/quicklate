@@ -9,10 +9,10 @@ struct CommandWorkspaceView: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            VStack(spacing: 18) {
+        HStack(spacing: 24) {
+            VStack(spacing: 24) {
                 topBar
-                HStack(spacing: 18) {
+                HStack(spacing: 24) {
                     TranscriptPaneView(
                         title: AppText.original,
                         subtitle: AppText.originalDescription,
@@ -39,7 +39,7 @@ struct CommandWorkspaceView: View {
                 toggleExpanded: { viewModel.toggleSetupRail() }
             )
         }
-        .padding(22)
+        .padding(32)
         .onAppear(perform: syncFloatingCaptionVisibility)
         .onReceive(NotificationCenter.default.publisher(for: FloatingCaptionWindowController.visibilityDidChangeNotification)) { _ in
             syncFloatingCaptionVisibility()
@@ -47,26 +47,26 @@ struct CommandWorkspaceView: View {
     }
 
     private var topBar: some View {
-        HStack(spacing: 14) {
-            QuickLateAppIconView(size: 44)
+        HStack(spacing: 20) {
+            QuickLateWordmarkView()
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(AppText.liveTranslationWorkspace)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
                 Text(viewModel.session.languageSummary)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(QuickLatePalette.textMuted)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(QuickLatePalette.slate)
             }
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Button(action: showFloatingCaptions) {
                     TopBarSecondaryActionLabel(
                         title: AppText.floatingCaptions,
                         systemImage: isFloatingCaptionVisible ? "captions.bubble.fill" : "captions.bubble",
-                        accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.brandBlue
+                        accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.primary
                     )
                 }
                 .buttonStyle(TopBarPressButtonStyle())
@@ -84,12 +84,12 @@ struct CommandWorkspaceView: View {
                 .buttonStyle(TopBarPressButtonStyle())
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .background(QuickLatePalette.panelRaised, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, 32)
+        .padding(.vertical, 24)
+        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(QuickLatePalette.borderStrong, lineWidth: 1)
+            RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
     }
 
@@ -128,11 +128,11 @@ struct CommandWorkspaceView: View {
     private var primaryActionAccentColor: Color {
         switch viewModel.session.applePreflightState.primaryAction {
         case .downloadAndStart, .retryDownload, .changeLanguagePair, .openSystemSettings:
-            QuickLatePalette.brandBlue
+            QuickLatePalette.primary
         case .wait:
             QuickLatePalette.attention
         case .start:
-            viewModel.session.isRunning ? .red : QuickLatePalette.brandBlue
+            viewModel.session.isRunning ? QuickLatePalette.critical : QuickLatePalette.primary
         }
     }
 
@@ -153,14 +153,14 @@ private struct TopBarSecondaryActionLabel: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.callout.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(accentColor.opacity(0.18), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(QuickLatePalette.inkDeep)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 13)
+            .background(.clear, in: Capsule())
             .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .strokeBorder(accentColor.opacity(0.34), lineWidth: 1)
+                Capsule()
+                    .strokeBorder(QuickLatePalette.inkDeep, lineWidth: 2)
             }
     }
 }
@@ -172,23 +172,19 @@ private struct TopBarPrimaryActionLabel: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.callout.weight(.bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            .background(accentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-            }
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(QuickLatePalette.onPrimary)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 14)
+            .background(accentColor, in: Capsule())
     }
 }
 
 private struct TopBarPressButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .brightness(configuration.isPressed ? 0.04 : 0)
-            .animation(.spring(response: 0.18, dampingFraction: 0.78), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }

@@ -56,6 +56,8 @@ BUILD_BINARY="$(swift build -c release --show-bin-path)/$APP_NAME"
 
 install -m 755 "$BUILD_BINARY" "$APP_BINARY"
 install -m 644 "$ROOT_DIR/Resources/AppIcon.icns" "$APP_RESOURCES/AppIcon.icns"
+install -m 644 "$ROOT_DIR/Resources/MenuBarIcon.png" "$APP_RESOURCES/MenuBarIcon.png"
+install -m 644 "$ROOT_DIR/Resources/QuickLateLogo.png" "$APP_RESOURCES/QuickLateLogo.png"
 install -m 644 "$ROOT_DIR/LICENSE" "$APP_RESOURCES/LICENSE"
 install -m 644 "$ROOT_DIR/NOTICE" "$APP_RESOURCES/NOTICE"
 
