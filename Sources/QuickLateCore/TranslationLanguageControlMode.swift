@@ -7,6 +7,39 @@ public enum TranslationLanguageControlMode: Equatable, Sendable {
     }
 }
 
+public struct AppWindowSize: Equatable, Sendable {
+    public let width: Int
+    public let height: Int
+
+    public init(width: Int, height: Int) {
+        self.width = width
+        self.height = height
+    }
+}
+
+public enum AppWindowMetrics {
+    public static let widthRatio = 0.56
+    public static let heightRatio = 0.68
+    public static let minimumMainWindowWidth = 900
+    public static let minimumMainWindowHeight = 560
+    public static let maximumMainWindowWidth = 1_280
+    public static let maximumMainWindowHeight = 820
+
+    public static func defaultMainWindowSize(visibleWidth: Int, visibleHeight: Int) -> AppWindowSize {
+        let scaledWidth = Int((Double(visibleWidth) * widthRatio).rounded())
+        let scaledHeight = Int((Double(visibleHeight) * heightRatio).rounded())
+
+        return AppWindowSize(
+            width: clamp(scaledWidth, minimum: minimumMainWindowWidth, maximum: maximumMainWindowWidth),
+            height: clamp(scaledHeight, minimum: minimumMainWindowHeight, maximum: maximumMainWindowHeight)
+        )
+    }
+
+    private static func clamp(_ value: Int, minimum: Int, maximum: Int) -> Int {
+        min(max(value, minimum), maximum)
+    }
+}
+
 public struct QuickLateUIDensityMetrics: Equatable, Sendable {
     public let workspaceTitleFontSize: Double
     public let transcriptTitleFontSize: Double

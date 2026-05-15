@@ -8,15 +8,36 @@ struct QuickLateApp: App {
     @State private var session = TranslationSessionStore()
     @State private var menuBarPanelController = MenuBarPanelController()
 
+    private static let minimumMainWindowWidth: CGFloat = 900
+    private static let minimumMainWindowHeight: CGFloat = 560
+    private static let maximumMainWindowWidth: CGFloat = 1_280
+    private static let maximumMainWindowHeight: CGFloat = 820
+    private static let mainWindowWidthRatio: CGFloat = 0.56
+    private static let mainWindowHeightRatio: CGFloat = 0.68
+
+    private static var defaultMainWindowSize: (width: CGFloat, height: CGFloat) {
+        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1_920, height: 1_050)
+        let scaledWidth = (visibleFrame.width * mainWindowWidthRatio).rounded()
+        let scaledHeight = (visibleFrame.height * mainWindowHeightRatio).rounded()
+        return (
+            width: min(max(scaledWidth, minimumMainWindowWidth), maximumMainWindowWidth),
+            height: min(max(scaledHeight, minimumMainWindowHeight), maximumMainWindowHeight)
+        )
+    }
+
     var body: some Scene {
         WindowGroup("QuickLate", id: QuickLateWindowID.main) {
             ContentView(session: session)
-                .frame(minWidth: 900, minHeight: 560)
+                .frame(
+                    minWidth: Self.minimumMainWindowWidth,
+                    minHeight: Self.minimumMainWindowHeight
+                )
                 .background(MenuBarPanelInstaller(session: session, controller: menuBarPanelController))
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     session.prepareForTermination()
                 }
         }
+        .defaultSize(width: Self.defaultMainWindowSize.width, height: Self.defaultMainWindowSize.height)
         .commands {
             CommandGroup(replacing: .newItem) {}
         }
