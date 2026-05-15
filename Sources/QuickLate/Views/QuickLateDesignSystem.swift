@@ -53,6 +53,34 @@ enum QuickLateMetric {
     static let pill: CGFloat = 100
 }
 
+struct QuickLateViewDensityMetrics {
+    let workspaceTitleFontSize: CGFloat
+    let transcriptTitleFontSize: CGFloat
+    let transcriptSubtitleFontSize: CGFloat
+    let transcriptBodyFontSize: CGFloat
+    let emptyStateFontSize: CGFloat
+    let primaryButtonFontSize: CGFloat
+    let languageChipFontSize: CGFloat
+    let languageChipLineLimit: Int
+    let languageChipMinimumScaleFactor: CGFloat
+    let topBarControlRowSpacing: CGFloat
+    let workspaceColumnSpacing: CGFloat
+
+    static let comfortableDesktop = QuickLateViewDensityMetrics(
+        workspaceTitleFontSize: 24,
+        transcriptTitleFontSize: 18,
+        transcriptSubtitleFontSize: 13,
+        transcriptBodyFontSize: 20,
+        emptyStateFontSize: 20,
+        primaryButtonFontSize: 13,
+        languageChipFontSize: 12,
+        languageChipLineLimit: 1,
+        languageChipMinimumScaleFactor: 0.82,
+        topBarControlRowSpacing: 18,
+        workspaceColumnSpacing: 32
+    )
+}
+
 struct QuickLateStageBackground: View {
     var body: some View {
         QuickLatePalette.canvas
@@ -95,11 +123,13 @@ struct QuickLateAppIconView: View {
 
 struct QuickLateWordmarkView: View {
     var body: some View {
-        HStack(spacing: 10) {
-            QuickLateAppIconView(size: 34)
+        HStack(spacing: 9) {
+            QuickLateAppIconView(size: 30)
             Text(AppText.appName)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.system(size: 19, weight: .bold, design: .rounded))
                 .foregroundStyle(QuickLatePalette.inkDeep)
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
         }
     }
 }

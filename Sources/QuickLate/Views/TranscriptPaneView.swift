@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+private let transcriptDensity = QuickLateViewDensityMetrics.comfortableDesktop
+
 struct TranscriptPaneView: View {
     let title: String
     let subtitle: String
@@ -9,8 +11,17 @@ struct TranscriptPaneView: View {
     let accentColor: Color
     let showFloatingCaptions: () -> Void
 
+    private var transcriptBodyFont: Font {
+        let size = text.isEmpty ? transcriptDensity.emptyStateFontSize : transcriptDensity.transcriptBodyFontSize
+        return .system(
+            size: size,
+            weight: isTranslation ? .semibold : .medium,
+            design: .rounded
+        )
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(spacing: 8) {
@@ -18,22 +29,25 @@ struct TranscriptPaneView: View {
                             .fill(accentColor)
                             .frame(width: 8, height: 8)
                         Text(title)
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .font(.system(size: transcriptDensity.transcriptTitleFontSize, weight: .semibold, design: .rounded))
                             .foregroundStyle(QuickLatePalette.inkDeep)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.86)
                     }
                     Text(subtitle)
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.system(size: transcriptDensity.transcriptSubtitleFontSize, weight: .regular))
                         .foregroundStyle(QuickLatePalette.slate)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
                 }
                 Spacer(minLength: 0)
                 Button {
                     copyText()
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(accentColor)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 36, height: 36)
                         .background(QuickLatePalette.primarySoft, in: Circle())
                 }
                 .buttonStyle(TranscriptPaneIconButtonStyle())
@@ -43,12 +57,12 @@ struct TranscriptPaneView: View {
 
             ScrollView {
                 Text(text.isEmpty ? AppText.noCaptionsYet : text)
-                    .font(isTranslation ? .system(size: 24, weight: .semibold, design: .rounded) : .system(size: 24, weight: .medium, design: .rounded))
+                    .font(transcriptBodyFont)
                     .foregroundStyle(text.isEmpty ? QuickLatePalette.steel : QuickLatePalette.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
-                    .lineSpacing(4)
-                    .padding(.top, 6)
+                    .lineSpacing(6)
+                    .padding(.top, 10)
             }
 
             HStack(spacing: 12) {
@@ -59,7 +73,7 @@ struct TranscriptPaneView: View {
             }
             .controlSize(.small)
         }
-        .padding(32)
+        .padding(34)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
         .overlay {
@@ -91,10 +105,12 @@ private struct TranscriptPaneTextButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .bold))
+            .font(.system(size: transcriptDensity.primaryButtonFontSize, weight: .bold))
             .foregroundStyle(isPrimary ? QuickLatePalette.onPrimary : QuickLatePalette.inkDeep)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
             .background(isPrimary ? accentColor : Color.clear, in: Capsule())
             .overlay {
                 Capsule()

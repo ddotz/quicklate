@@ -1,6 +1,8 @@
 import QuickLateCore
 import SwiftUI
 
+private let workspaceDensity = QuickLateViewDensityMetrics.comfortableDesktop
+
 struct CommandWorkspaceView: View {
     @State private var viewModel: WorkspaceViewModel
     @State private var isFloatingCaptionVisible = FloatingCaptionWindowController.isOpen
@@ -10,10 +12,10 @@ struct CommandWorkspaceView: View {
     }
 
     var body: some View {
-        HStack(spacing: 24) {
-            VStack(spacing: 24) {
+        HStack(spacing: workspaceDensity.workspaceColumnSpacing) {
+            VStack(spacing: 34) {
                 topBar
-                HStack(spacing: 24) {
+                HStack(spacing: workspaceDensity.workspaceColumnSpacing) {
                     TranscriptPaneView(
                         title: AppText.original,
                         subtitle: AppText.originalDescription,
@@ -40,7 +42,8 @@ struct CommandWorkspaceView: View {
                 toggleExpanded: { viewModel.toggleSetupRail() }
             )
         }
-        .padding(32)
+        .padding(.horizontal, 38)
+        .padding(.vertical, 36)
         .onAppear(perform: syncFloatingCaptionVisibility)
         .onReceive(NotificationCenter.default.publisher(for: FloatingCaptionWindowController.visibilityDidChangeNotification)) { _ in
             syncFloatingCaptionVisibility()
@@ -48,17 +51,21 @@ struct CommandWorkspaceView: View {
     }
 
     private var topBar: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: workspaceDensity.topBarControlRowSpacing) {
             HStack(spacing: 20) {
                 QuickLateWordmarkView()
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(AppText.liveTranslationWorkspace)
-                        .font(.system(size: 28, weight: .semibold, design: .rounded))
+                        .font(.system(size: workspaceDensity.workspaceTitleFontSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(QuickLatePalette.inkDeep)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.86)
                     Text(viewModel.session.languageSummary)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(QuickLatePalette.slate)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.84)
                 }
 
                 Spacer(minLength: 0)
@@ -99,8 +106,8 @@ struct CommandWorkspaceView: View {
                 languageControls
             }
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 24)
+        .padding(.horizontal, 30)
+        .padding(.vertical, 22)
         .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous)
@@ -306,24 +313,19 @@ private struct WorkspaceProcessingEnginePicker: View {
 
 private struct AutoDetectLanguageBadge: View {
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             Image(systemName: "sparkles")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(QuickLatePalette.primary)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(AppText.autoDetectInput)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(QuickLatePalette.inkDeep)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
-                Text(AppText.autoDetectShort)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(QuickLatePalette.primary)
-            }
+            Text(AppText.autoDetectInput)
+                .font(.system(size: workspaceDensity.languageChipFontSize, weight: .semibold))
+                .foregroundStyle(QuickLatePalette.inkDeep)
+                .lineLimit(workspaceDensity.languageChipLineLimit)
+                .minimumScaleFactor(workspaceDensity.languageChipMinimumScaleFactor)
+                .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 13)
         .padding(.vertical, 8)
         .background(QuickLatePalette.primarySoft, in: Capsule())
         .overlay {
@@ -347,29 +349,23 @@ private struct LanguageMenuChip: View {
                 }
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 Image(systemName: systemImage)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(QuickLatePalette.primary)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(QuickLatePalette.slate)
-                        .lineLimit(1)
-
-                    Text(selection.localizedTitle)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(QuickLatePalette.inkDeep)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                }
+                Text("\(title) \(selection.localizedTitle)")
+                    .font(.system(size: workspaceDensity.languageChipFontSize, weight: .semibold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(workspaceDensity.languageChipLineLimit)
+                    .minimumScaleFactor(workspaceDensity.languageChipMinimumScaleFactor)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(QuickLatePalette.steel)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 13)
             .padding(.vertical, 8)
             .background(QuickLatePalette.surfaceSoft, in: Capsule())
             .overlay {
@@ -392,10 +388,12 @@ private struct TopBarSecondaryActionLabel: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.system(size: 14, weight: .bold))
+            .font(.system(size: workspaceDensity.primaryButtonFontSize, weight: .bold))
             .foregroundStyle(QuickLatePalette.inkDeep)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 13)
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
             .background(.clear, in: Capsule())
             .overlay {
                 Capsule()
@@ -411,10 +409,12 @@ private struct TopBarPrimaryActionLabel: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.system(size: 14, weight: .bold))
+            .font(.system(size: workspaceDensity.primaryButtonFontSize, weight: .bold))
             .foregroundStyle(QuickLatePalette.onPrimary)
-            .padding(.horizontal, 22)
-            .padding(.vertical, 14)
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 13)
             .background(accentColor, in: Capsule())
     }
 }

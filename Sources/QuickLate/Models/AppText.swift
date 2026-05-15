@@ -355,15 +355,15 @@ enum AppText {
     static let title = localized(english: "Title", korean: "제목")
     static let original = localized(english: "Original", korean: "원문")
     static let originalDescription = localized(
-        english: "Incoming speech with live paragraph cleanup.",
-        korean: "들어오는 음성을 실시간 문단 정리와 함께 보여줍니다."
+        english: "Live speech, cleaned by paragraph.",
+        korean: "음성을 문단별로 정리합니다."
     )
     static let transcriptText = localized(english: "Transcript Text", korean: "기록 텍스트")
     static let deleteSavedTranscript = localized(english: "Delete Transcript", korean: "기록 삭제")
     static let translation = localized(english: "Translation", korean: "번역")
     static let translationDescription = localized(
-        english: "Translated output aligned to the same transcript flow.",
-        korean: "같은 기록 흐름에 맞춰 번역 결과를 정렬해 보여줍니다."
+        english: "Translation aligned to the transcript.",
+        korean: "번역을 기록 흐름에 맞춥니다."
     )
     static let saveEdits = localized(english: "Save Edits", korean: "수정 저장")
     static let liveCaptions = localized(english: "Live Captions", korean: "실시간 기록")

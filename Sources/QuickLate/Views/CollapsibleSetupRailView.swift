@@ -38,7 +38,7 @@ struct CollapsibleSetupRailView: View {
         .overlay(alignment: .trailing) {
             if state.shouldPeek {
                 SetupRailPeekView(download: download)
-                    .offset(x: -72)
+                    .offset(x: -12, y: 6)
             }
         }
     }
@@ -87,23 +87,27 @@ private struct SetupRailPeekView: View {
     let download: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(QuickLatePalette.attention)
                     .frame(width: 8, height: 8)
                 Text(AppText.languagePackNeeded)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
             }
             Text(AppText.downloadModelAssets)
-                .font(.system(size: 14, weight: .regular))
+                .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(QuickLatePalette.slate)
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
             Button(AppText.downloadAndStart, action: download)
                 .buttonStyle(PeekPrimaryButtonStyle())
         }
-        .padding(24)
-        .frame(width: 260, alignment: .leading)
+        .padding(18)
+        .frame(width: 224, alignment: .leading)
         .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
@@ -115,10 +119,12 @@ private struct SetupRailPeekView: View {
 private struct PeekPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .bold))
+            .font(.system(size: 13, weight: .bold))
             .foregroundStyle(QuickLatePalette.onPrimary)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .lineLimit(1)
+            .minimumScaleFactor(0.86)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
             .background(QuickLatePalette.primary, in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.86 : 1)
