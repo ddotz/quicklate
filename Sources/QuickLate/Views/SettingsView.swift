@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import Translation
 
 struct SettingsView: View {
     @Bindable var session: TranslationSessionStore
@@ -122,6 +123,9 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 420)
         .padding()
+        .translationTask(session.translationDownloadConfiguration) { translationSession in
+            await session.handleTranslationDownloadSession(translationSession)
+        }
     }
 }
 
@@ -148,9 +152,21 @@ private struct SettingsAssetAvailabilityRow: View {
 
             Spacer()
 
-            if availability.state == .checking || availability.state == .downloading {
+            if availability.state == .checking {
                 ProgressView()
                     .controlSize(.small)
+            } else if availability.state == .downloading {
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(AppText.modelStatusDownloading)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(color)
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .controlSize(.small)
+                        .tint(color)
+                        .frame(width: 110)
+                        .accessibilityLabel(AppText.languagePackDownloadInProgress)
+                }
             } else if availability.state.canDownload {
                 Button(AppText.download) {
                     download()

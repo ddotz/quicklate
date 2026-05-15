@@ -50,6 +50,10 @@ public struct AssetPreflightState: Equatable, Sendable {
         primaryAction != .start
     }
 
+    public var showsDownloadProgress: Bool {
+        speech == .downloading || translation == .downloading
+    }
+
     public var primaryAction: AssetPrimaryAction {
         if speech == .checking || translation == .checking || speech == .downloading || translation == .downloading {
             return .wait

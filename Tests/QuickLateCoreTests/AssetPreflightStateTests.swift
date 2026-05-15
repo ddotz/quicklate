@@ -52,6 +52,23 @@ struct AssetPreflightStateTests {
     }
 
     @Test
+    func downloadingAssetsExposeProgressState() {
+        let speechDownload = AssetPreflightState(
+            speech: .downloading,
+            translation: .installed,
+            startIntent: .none
+        )
+        let translationDownload = AssetPreflightState(
+            speech: .installed,
+            translation: .downloading,
+            startIntent: .none
+        )
+
+        #expect(speechDownload.showsDownloadProgress)
+        #expect(translationDownload.showsDownloadProgress)
+    }
+
+    @Test
     func failedInstallStatesAllowRetryDownloadRequest() {
         #expect(AssetInstallState.downloadRequired.allowsDownloadRequest)
         #expect(AssetInstallState.failed.allowsDownloadRequest)

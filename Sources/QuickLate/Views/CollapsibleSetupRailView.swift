@@ -26,6 +26,15 @@ struct CollapsibleSetupRailView: View {
             .help(AppText.downloadModelAssets)
             .accessibilityLabel(AppText.downloadModelAssets)
 
+            if state.preflight.showsDownloadProgress {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
+                    .tint(QuickLatePalette.primary)
+                    .frame(width: 42)
+                    .accessibilityLabel(AppText.languagePackDownloadInProgress)
+            }
+
             Spacer(minLength: 0)
         }
         .padding(.vertical, 16)
@@ -36,7 +45,10 @@ struct CollapsibleSetupRailView: View {
                 .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
         .overlay(alignment: .trailing) {
-            if state.shouldPeek {
+            if state.preflight.showsDownloadProgress {
+                SetupRailProgressPeekView()
+                    .offset(x: -12, y: 6)
+            } else if state.shouldPeek {
                 SetupRailPeekView(download: download)
                     .offset(x: -12, y: 6)
             }
@@ -113,6 +125,35 @@ private struct SetupRailPeekView: View {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
                 .strokeBorder(QuickLatePalette.hairline, lineWidth: 1)
         }
+    }
+}
+
+private struct SetupRailProgressPeekView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(AppText.languagePackDownloadInProgress)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
+            }
+            ProgressView()
+                .progressViewStyle(.linear)
+                .controlSize(.small)
+                .tint(QuickLatePalette.primary)
+        }
+        .padding(18)
+        .frame(width: 224, alignment: .leading)
+        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairline, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(AppText.languagePackDownloadInProgress)
     }
 }
 

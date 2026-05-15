@@ -37,23 +37,6 @@ enum ModelAvailabilityChecker {
         ]
     }
 
-    static func downloadAssets(
-        for model: IntelligenceModel,
-        source: LanguageOption,
-        target: LanguageOption
-    ) async throws {
-        switch model {
-        case .appleSystem:
-            async let speechDownload: Void = downloadSpeechAssets(for: source)
-            async let translationDownload: Void = downloadTranslationAssets(source: source, target: target)
-            _ = try await (speechDownload, translationDownload)
-        case .appleOnDevice:
-            try await downloadTranslationAssets(source: source, target: target)
-        case .appleSpeechOnly:
-            try await downloadSpeechAssets(for: source)
-        }
-    }
-
     private static func combinedAvailability(
         model: IntelligenceModel,
         speech: ModelAvailability,
@@ -120,7 +103,7 @@ enum ModelAvailabilityChecker {
         )
     }
 
-    private static func downloadSpeechAssets(for language: LanguageOption) async throws {
+    static func downloadSpeechAssets(for language: LanguageOption) async throws {
         guard let supportedLocale = await SpeechTranscriber.supportedLocale(equivalentTo: language.locale) else {
             return
         }
@@ -154,16 +137,6 @@ enum ModelAvailabilityChecker {
         )
     }
 
-    private static func downloadTranslationAssets(
-        source: LanguageOption,
-        target: LanguageOption
-    ) async throws {
-        let session = TranslationSession(
-            installedSource: Locale.Language(identifier: source.id),
-            target: Locale.Language(identifier: target.id)
-        )
-        try await session.prepareTranslation()
-    }
 
     private static func availabilityState(
         for status: AssetInventory.Status

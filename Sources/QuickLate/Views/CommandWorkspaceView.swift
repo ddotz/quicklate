@@ -90,6 +90,10 @@ struct CommandWorkspaceView: View {
 
                 languageControls
             }
+
+            if viewModel.session.applePreflightState.showsDownloadProgress {
+                LanguagePackDownloadProgressView()
+            }
         }
         .padding(.horizontal, 30)
         .padding(.vertical, 22)
@@ -249,6 +253,29 @@ struct CommandWorkspaceView: View {
 
     private func syncFloatingCaptionVisibility() {
         isFloatingCaptionVisible = FloatingCaptionWindowController.isOpen
+    }
+}
+
+private struct LanguagePackDownloadProgressView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(QuickLatePalette.primary)
+                Text(AppText.languagePackDownloadInProgress)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+            }
+            ProgressView()
+                .progressViewStyle(.linear)
+                .controlSize(.small)
+                .tint(QuickLatePalette.primary)
+        }
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(AppText.languagePackDownloadInProgress)
     }
 }
 

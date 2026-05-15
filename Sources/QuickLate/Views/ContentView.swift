@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import Translation
 
 struct ContentView: View {
     @Bindable var session: TranslationSessionStore
@@ -14,6 +15,9 @@ struct ContentView: View {
                     .padding(.top, 18)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
+        }
+        .translationTask(session.translationDownloadConfiguration) { translationSession in
+            await session.handleTranslationDownloadSession(translationSession)
         }
         .animation(.spring(response: 0.26, dampingFraction: 0.84), value: session.toastSequence)
         .animation(.easeOut(duration: 0.18), value: session.toastMessage)

@@ -3,6 +3,7 @@ import AppKit
 import QuickLateCore
 import Foundation
 import Observation
+@preconcurrency import Translation
 
 private enum SettingsKey {
     static let sourceLanguageID = "sourceLanguageID"
@@ -201,6 +202,9 @@ final class TranslationSessionStore {
     private var activeAutosaveSourceText = ""
     private var activeAutosaveTranslatedText = ""
     private var isRestoringSelectedSettings = false
+    var translationDownloadConfiguration: TranslationSession.Configuration?
+    private var pendingAssetDownload: PendingAssetDownload?
+    private var isTranslationDownloadSessionActive = false
     private var modelAvailabilityTask: Task<Void, Never>?
     private var toastDismissTask: Task<Void, Never>?
     private var lastSpokenTranslatedText = ""
@@ -228,6 +232,11 @@ final class TranslationSessionStore {
         let fileName: String
         let text: String
         let updatedAt: Date
+    }
+
+    private struct PendingAssetDownload {
+        let modelsToUpdate: [AppleAssetModel]
+        var remainingRoutes: [AppleAssetDownloadRoute]
     }
 
     private struct PartialSavedTranscript {
@@ -421,32 +430,122 @@ final class TranslationSessionStore {
     func downloadModelAssets(for model: IntelligenceModel) {
         guard modelAvailability(for: model).state.canDownload else { return }
 
-        let sourceLanguage = sourceLanguage
-        let targetLanguage = targetLanguage
-        modelAvailabilityByModelID[model.id] = ModelAvailability(
-            state: .downloading,
-            detail: model.detail
+        let plan = AppleAssetDownloadPlan(
+            model: model.appleAssetModel,
+            speech: assetDownloadCoordinator.state(from: modelAvailability(for: .appleSpeechOnly)),
+            translation: assetDownloadCoordinator.state(from: modelAvailability(for: .appleOnDevice))
+        )
+        guard !plan.routes.isEmpty else { return }
+
+        pendingAssetDownload = PendingAssetDownload(
+            modelsToUpdate: plan.modelsToMarkDownloading,
+            remainingRoutes: plan.routes
+        )
+        markAssetDownloadModels(plan.modelsToMarkDownloading, state: .downloading, detail: AppText.modelStatusDownloading)
+        E2ERuntimeReporter.report(
+            "assetDownloadStarted",
+            fields: [
+                "model": model.id,
+                "routes": plan.routes.map(\.e2eName).joined(separator: ",")
+            ]
         )
 
-        Task { @MainActor in
+        let sourceLanguage = sourceLanguage
+        let targetLanguage = targetLanguage
+        if plan.routes.contains(.speechAssetInventory) {
+            startSpeechAssetDownload(source: sourceLanguage)
+        }
+        if plan.routes.contains(.swiftUITranslationTask) {
+            startTranslationAssetDownload(source: sourceLanguage, target: targetLanguage)
+        }
+    }
+
+    func handleTranslationDownloadSession(_ translationSession: TranslationSession) async {
+        guard pendingAssetDownload?.remainingRoutes.contains(.swiftUITranslationTask) == true else { return }
+        guard !isTranslationDownloadSessionActive else { return }
+
+        isTranslationDownloadSessionActive = true
+        defer { isTranslationDownloadSessionActive = false }
+        E2ERuntimeReporter.report(
+            "translationAssetDownloadTaskStarted",
+            fields: ["canRequestDownloads": String(translationSession.canRequestDownloads)]
+        )
+
+        do {
+            try await translationSession.prepareTranslation()
+            E2ERuntimeReporter.report("translationAssetDownloadTaskFinished")
+            completePendingAssetDownloadRoute(.swiftUITranslationTask)
+        } catch {
+            E2ERuntimeReporter.report(
+                "translationAssetDownloadTaskFailed",
+                fields: ["error": error.localizedDescription]
+            )
+            failPendingAssetDownload(error)
+        }
+    }
+
+    private func startSpeechAssetDownload(source: LanguageOption) {
+        Task {
             do {
-                try await ModelAvailabilityChecker.downloadAssets(
-                    for: model,
-                    source: sourceLanguage,
-                    target: targetLanguage
-                )
-                refreshModelAvailability()
-                if assetDownloadCoordinator.startIntent == .startAfterDownload {
-                    assetDownloadCoordinator.clearStartIntent()
-                    start()
+                try await ModelAvailabilityChecker.downloadSpeechAssets(for: source)
+                await MainActor.run {
+                    self.completePendingAssetDownloadRoute(.speechAssetInventory)
                 }
             } catch {
-                assetDownloadCoordinator.clearStartIntent()
-                modelAvailabilityByModelID[model.id] = ModelAvailability(
-                    state: .failed,
-                    detail: error.localizedDescription
-                )
+                await MainActor.run {
+                    self.failPendingAssetDownload(error)
+                }
             }
+        }
+    }
+
+    private func startTranslationAssetDownload(source: LanguageOption, target: LanguageOption) {
+        translationDownloadConfiguration = nil
+        translationDownloadConfiguration = TranslationSession.Configuration(
+            source: Locale.Language(identifier: source.id),
+            target: Locale.Language(identifier: target.id)
+        )
+    }
+
+    private func completePendingAssetDownloadRoute(_ route: AppleAssetDownloadRoute) {
+        guard var pendingAssetDownload else { return }
+        pendingAssetDownload.remainingRoutes.removeAll { $0 == route }
+        self.pendingAssetDownload = pendingAssetDownload
+        guard pendingAssetDownload.remainingRoutes.isEmpty else { return }
+
+        let shouldStart = assetDownloadCoordinator.startIntent == .startAfterDownload
+        translationDownloadConfiguration = nil
+        self.pendingAssetDownload = nil
+        assetDownloadCoordinator.clearStartIntent()
+        refreshModelAvailability()
+        if shouldStart {
+            start()
+        }
+    }
+
+    private func failPendingAssetDownload(_ error: Error) {
+        guard let pendingAssetDownload else { return }
+        translationDownloadConfiguration = nil
+        self.pendingAssetDownload = nil
+        assetDownloadCoordinator.clearStartIntent()
+        markAssetDownloadModels(
+            pendingAssetDownload.modelsToUpdate,
+            state: .failed,
+            detail: error.localizedDescription
+        )
+    }
+
+    private func markAssetDownloadModels(
+        _ models: [AppleAssetModel],
+        state: ModelAvailabilityState,
+        detail: String
+    ) {
+        for model in models {
+            let intelligenceModel = model.intelligenceModel
+            modelAvailabilityByModelID[intelligenceModel.id] = ModelAvailability(
+                state: state,
+                detail: detail
+            )
         }
     }
 
@@ -2565,6 +2664,43 @@ extension TranslationSessionStore: LiveSpeechTranscriberDelegate {
     nonisolated func liveSpeechTranscriber(_ transcriber: LiveSpeechTranscriber, didFail error: Error) {
         Task { @MainActor in
             statusMessage = error.localizedDescription
+        }
+    }
+}
+
+private extension IntelligenceModel {
+    var appleAssetModel: AppleAssetModel {
+        switch self {
+        case .appleSystem:
+            .combined
+        case .appleOnDevice:
+            .translationOnly
+        case .appleSpeechOnly:
+            .speechOnly
+        }
+    }
+}
+
+private extension AppleAssetModel {
+    var intelligenceModel: IntelligenceModel {
+        switch self {
+        case .combined:
+            .appleSystem
+        case .translationOnly:
+            .appleOnDevice
+        case .speechOnly:
+            .appleSpeechOnly
+        }
+    }
+}
+
+private extension AppleAssetDownloadRoute {
+    var e2eName: String {
+        switch self {
+        case .speechAssetInventory:
+            "speechAssetInventory"
+        case .swiftUITranslationTask:
+            "swiftUITranslationTask"
         }
     }
 }
