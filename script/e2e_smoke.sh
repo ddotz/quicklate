@@ -54,6 +54,25 @@ assert_translation_pane_has_no_speak_action() {
   printf 'no Speak action in command workspace translation pane\n' | tee -a "$EVIDENCE_DIR/e2e.log"
 }
 
+assert_workspace_redundant_actions_absent() {
+  log_step "workspace redundant action check"
+  local violation_file="/tmp/quicklate-e2e-redundant-actions.txt"
+  : >"$violation_file"
+
+  if grep -RInE 'Button\(AppText\.(copy|floatingCaptions)' Sources/QuickLate/Views/TranscriptPaneView.swift >>"$violation_file"; then
+    true
+  fi
+  if grep -RInE 'AppText\.liveTranslationWorkspace|viewModel\.session\.languageSummary' Sources/QuickLate/Views/CommandWorkspaceView.swift >>"$violation_file"; then
+    true
+  fi
+
+  if [[ -s "$violation_file" ]]; then
+    cat "$violation_file" | tee -a "$EVIDENCE_DIR/e2e.log"
+    return 1
+  fi
+  printf 'redundant pane buttons and workspace title summary absent\n' | tee -a "$EVIDENCE_DIR/e2e.log"
+}
+
 probe_app() {
   local label="$1"
   local expected_policy="$2"
@@ -76,6 +95,7 @@ run_logged "swift test" swift test
 run_logged "swift build" swift build
 assert_missing_legacy_docs
 assert_translation_pane_has_no_speak_action
+assert_workspace_redundant_actions_absent
 
 log_step "default menu-bar launch"
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true

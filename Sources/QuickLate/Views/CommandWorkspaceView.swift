@@ -21,16 +21,14 @@ struct CommandWorkspaceView: View {
                         subtitle: AppText.originalDescription,
                         text: viewModel.session.visibleTranscript(),
                         isTranslation: false,
-                        accentColor: QuickLatePalette.originalAccent,
-                        showFloatingCaptions: showFloatingCaptions
+                        accentColor: QuickLatePalette.originalAccent
                     )
                     TranscriptPaneView(
                         title: AppText.translation,
                         subtitle: AppText.translationDescription,
                         text: viewModel.session.visibleTranslatedText(),
                         isTranslation: true,
-                        accentColor: QuickLatePalette.translationAccent,
-                        showFloatingCaptions: showFloatingCaptions
+                        accentColor: QuickLatePalette.translationAccent
                     )
                 }
             }
@@ -54,19 +52,6 @@ struct CommandWorkspaceView: View {
         VStack(alignment: .leading, spacing: workspaceDensity.topBarControlRowSpacing) {
             HStack(spacing: 20) {
                 QuickLateWordmarkView()
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(AppText.liveTranslationWorkspace)
-                        .font(.system(size: workspaceDensity.workspaceTitleFontSize, weight: .semibold, design: .rounded))
-                        .foregroundStyle(QuickLatePalette.inkDeep)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.86)
-                    Text(viewModel.session.languageSummary)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(QuickLatePalette.slate)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.84)
-                }
 
                 Spacer(minLength: 0)
 

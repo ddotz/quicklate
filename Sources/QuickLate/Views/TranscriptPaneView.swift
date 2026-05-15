@@ -9,7 +9,6 @@ struct TranscriptPaneView: View {
     let text: String
     let isTranslation: Bool
     let accentColor: Color
-    let showFloatingCaptions: () -> Void
 
     private var transcriptBodyFont: Font {
         let size = text.isEmpty ? transcriptDensity.emptyStateFontSize : transcriptDensity.transcriptBodyFontSize
@@ -65,13 +64,6 @@ struct TranscriptPaneView: View {
                     .padding(.top, 10)
             }
 
-            HStack(spacing: 12) {
-                Button(AppText.copy, action: copyText)
-                    .buttonStyle(TranscriptPaneTextButtonStyle(accentColor: accentColor, isPrimary: false))
-                Button(AppText.floatingCaptions, action: showFloatingCaptions)
-                    .buttonStyle(TranscriptPaneTextButtonStyle(accentColor: accentColor, isPrimary: true))
-            }
-            .controlSize(.small)
         }
         .padding(34)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -96,28 +88,5 @@ private struct TranscriptPaneIconButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
             .opacity(configuration.isPressed ? 0.78 : 1)
             .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
-    }
-}
-
-private struct TranscriptPaneTextButtonStyle: ButtonStyle {
-    let accentColor: Color
-    let isPrimary: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: transcriptDensity.primaryButtonFontSize, weight: .bold))
-            .foregroundStyle(isPrimary ? QuickLatePalette.onPrimary : QuickLatePalette.inkDeep)
-            .lineLimit(1)
-            .minimumScaleFactor(0.86)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-            .background(isPrimary ? accentColor : Color.clear, in: Capsule())
-            .overlay {
-                Capsule()
-                    .strokeBorder(isPrimary ? Color.clear : QuickLatePalette.hairline, lineWidth: isPrimary ? 0 : 2)
-            }
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .opacity(configuration.isPressed ? 0.86 : 1)
-            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
