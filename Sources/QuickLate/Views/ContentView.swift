@@ -5,6 +5,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
+            QuickLateStageBackground()
+
             CommandWorkspaceView(session: session)
 
             if let toastMessage = session.toastMessage {
@@ -27,12 +29,12 @@ private struct ToastMessageView: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(.regularMaterial, in: Capsule())
+            .background(QuickLatePalette.surfaceRaised, in: Capsule())
             .overlay {
                 Capsule()
-                    .strokeBorder(Color.primary.opacity(0.08))
+                    .strokeBorder(QuickLatePalette.borderStrong)
             }
-            .shadow(color: Color.black.opacity(0.16), radius: 14, y: 8)
+            .shadow(color: QuickLatePalette.brandBlue.opacity(0.22), radius: 18, y: 8)
             .accessibilityAddTraits(.updatesFrequently)
     }
 }

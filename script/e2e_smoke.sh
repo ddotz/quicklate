@@ -8,6 +8,7 @@ source "$SCRIPT_DIR/app_metadata.sh"
 
 EVIDENCE_DIR="${EVIDENCE_DIR:-$ROOT_DIR/dist/e2e/$(date +%Y%m%d-%H%M%S)}"
 mkdir -p "$EVIDENCE_DIR"
+mkdir -p "$ROOT_DIR/dist/e2e"
 ln -sfn "$EVIDENCE_DIR" "$ROOT_DIR/dist/e2e/latest"
 
 cd "$ROOT_DIR"
@@ -96,6 +97,8 @@ log_step "bundle metadata check"
 {
   /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c 'Print :NSSystemAudioCaptureUsageDescription' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
 } | tee "$EVIDENCE_DIR/bundle-metadata.log"
 

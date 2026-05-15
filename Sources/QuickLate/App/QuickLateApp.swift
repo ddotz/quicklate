@@ -37,7 +37,7 @@ struct QuickLateApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let appIcon = NSImage(named: "AppIcon") {
+        if let appIcon = loadApplicationIcon() {
             NSApp.applicationIconImage = appIcon
         }
         let showDockIcon = UserDefaults.standard.bool(forKey: "showDockIcon")
@@ -52,6 +52,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ]
         )
         scheduleMenuBarOnlyLaunchCleanup(for: settings)
+    }
+
+    private func loadApplicationIcon() -> NSImage? {
+        Bundle.main.url(forResource: "AppIcon", withExtension: "icns")
+            .flatMap(NSImage.init(contentsOf:))
+            ?? NSImage(named: "AppIcon")
     }
 
     private func scheduleMenuBarOnlyLaunchCleanup(for settings: AppPresenceSettings) {

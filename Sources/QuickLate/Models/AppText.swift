@@ -367,6 +367,7 @@ enum AppText {
     )
     static let saveEdits = localized(english: "Save Edits", korean: "수정 저장")
     static let liveCaptions = localized(english: "Live Captions", korean: "실시간 기록")
+    static let liveTranslationWorkspace = localized(english: "Live Translation", korean: "실시간 번역")
     static let transcriptWorkspace = localized(english: "Transcript Workspace", korean: "실시간 기록")
     static let delete = localized(english: "Delete", korean: "삭제")
     static let waitingForTranscript = localized(
