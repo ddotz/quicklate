@@ -6,23 +6,9 @@ import QuickLateCore
 @MainActor
 final class WorkspaceViewModel {
     let session: TranslationSessionStore
-    var isSetupRailExpanded = false
-    var isSetupRailPinnedOpen = false
 
     init(session: TranslationSessionStore) {
         self.session = session
-    }
-
-    var setupRailState: SetupRailState {
-        SetupRailState(
-            isExpanded: isSetupRailExpanded,
-            isPinnedOpen: isSetupRailPinnedOpen,
-            preflight: session.applePreflightState
-        )
-    }
-
-    func toggleSetupRail() {
-        isSetupRailExpanded.toggle()
     }
 
     func requestStart() {

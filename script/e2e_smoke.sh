@@ -73,6 +73,19 @@ assert_workspace_redundant_actions_absent() {
   printf 'redundant pane buttons and workspace title summary absent\n' | tee -a "$EVIDENCE_DIR/e2e.log"
 }
 
+assert_settings_owns_setup_controls() {
+  log_step "settings owns setup controls check"
+  if grep -RIn 'CollapsibleSetupRailView' Sources/QuickLate/Views/CommandWorkspaceView.swift >/tmp/quicklate-e2e-setup-rail.txt; then
+    cat /tmp/quicklate-e2e-setup-rail.txt | tee -a "$EVIDENCE_DIR/e2e.log"
+    return 1
+  fi
+  grep -q 'SettingsLink' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  grep -q 'SettingsProcessingEngine' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsLanguageSection' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsAssetAvailabilityRow' Sources/QuickLate/Views/SettingsView.swift
+  printf 'workspace setup rail absent and settings entrypoint/sections present\n' | tee -a "$EVIDENCE_DIR/e2e.log"
+}
+
 probe_app() {
   local label="$1"
   local expected_policy="$2"
@@ -96,6 +109,7 @@ run_logged "swift build" swift build
 assert_missing_legacy_docs
 assert_translation_pane_has_no_speak_action
 assert_workspace_redundant_actions_absent
+assert_settings_owns_setup_controls
 
 log_step "default menu-bar launch"
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true

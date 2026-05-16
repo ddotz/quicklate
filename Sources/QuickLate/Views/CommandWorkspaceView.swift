@@ -12,34 +12,26 @@ struct CommandWorkspaceView: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(spacing: 18) {
-                topBar
-                HStack(spacing: 18) {
-                    TranscriptPaneView(
-                        title: AppText.original,
-                        subtitle: AppText.originalDescription,
-                        text: viewModel.session.visibleTranscript(),
-                        isTranslation: false,
-                        accentColor: QuickLatePalette.originalAccent
-                    )
-                    TranscriptPaneView(
-                        title: AppText.translation,
-                        subtitle: AppText.translationDescription,
-                        text: viewModel.session.visibleTranslatedText(),
-                        isTranslation: true,
-                        accentColor: QuickLatePalette.translationAccent
-                    )
-                }
+        VStack(spacing: 18) {
+            topBar
+            HStack(spacing: 18) {
+                TranscriptPaneView(
+                    title: AppText.original,
+                    subtitle: AppText.originalDescription,
+                    text: viewModel.session.visibleTranscript(),
+                    isTranslation: false,
+                    accentColor: QuickLatePalette.originalAccent
+                )
+                TranscriptPaneView(
+                    title: AppText.translation,
+                    subtitle: AppText.translationDescription,
+                    text: viewModel.session.visibleTranslatedText(),
+                    isTranslation: true,
+                    accentColor: QuickLatePalette.translationAccent
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            CollapsibleSetupRailView(
-                state: viewModel.setupRailState,
-                download: { viewModel.session.downloadModelAssets(for: .appleSystem) },
-                toggleExpanded: { viewModel.toggleSetupRail() }
-            )
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(18)
         .onAppear(perform: syncFloatingCaptionVisibility)
         .onReceive(NotificationCenter.default.publisher(for: FloatingCaptionWindowController.visibilityDidChangeNotification)) { _ in
@@ -63,6 +55,16 @@ struct CommandWorkspaceView: View {
 
                 HStack(spacing: 10) {
                     statusBadge
+
+                    SettingsLink {
+                        TopBarSecondaryActionLabel(
+                            title: AppText.settings,
+                            systemImage: "gearshape",
+                            accentColor: QuickLatePalette.primary
+                        )
+                    }
+                    .buttonStyle(TopBarPressButtonStyle())
+                    .help(AppText.openSettings)
 
                     Button(action: showFloatingCaptions) {
                         TopBarSecondaryActionLabel(
