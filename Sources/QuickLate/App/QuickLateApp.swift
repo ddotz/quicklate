@@ -28,6 +28,7 @@ struct QuickLateApp: App {
     var body: some Scene {
         WindowGroup("QuickLate", id: QuickLateWindowID.main) {
             ContentView(session: session)
+                .preferredColorScheme(.light)
                 .frame(
                     minWidth: Self.minimumMainWindowWidth,
                     minHeight: Self.minimumMainWindowHeight
@@ -44,6 +45,7 @@ struct QuickLateApp: App {
 
         Window(AppText.floatingCaptions, id: QuickLateWindowID.floatingCaptions) {
             FloatingCaptionWindowView(session: session)
+                .preferredColorScheme(.light)
         }
         .defaultSize(width: 720, height: 170)
         .windowStyle(.plain)
@@ -51,6 +53,7 @@ struct QuickLateApp: App {
 
         Settings {
             SettingsView(session: session)
+                .preferredColorScheme(.light)
         }
     }
 }
@@ -58,6 +61,7 @@ struct QuickLateApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.appearance = NSAppearance(named: .aqua)
         if let appIcon = loadApplicationIcon() {
             NSApp.applicationIconImage = appIcon
         }

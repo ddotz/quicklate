@@ -20,7 +20,7 @@ struct TranscriptPaneView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(spacing: 8) {
@@ -50,6 +50,7 @@ struct TranscriptPaneView: View {
                         .background(QuickLatePalette.primarySoft, in: Circle())
                 }
                 .buttonStyle(TranscriptPaneIconButtonStyle())
+                .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
                 .help(AppText.copy)
                 .accessibilityLabel(AppText.copy)
             }
@@ -65,13 +66,14 @@ struct TranscriptPaneView: View {
             }
 
         }
-        .padding(34)
+        .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
+        .background(QuickLatePalette.surfaceRaised, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous)
                 .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+        .shadow(color: QuickLatePalette.primaryDeep.opacity(0.06), radius: 28, x: 0, y: 18)
     }
 
     private func copyText() {

@@ -38,12 +38,13 @@ struct CollapsibleSetupRailView: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 16)
-        .frame(width: 64)
-        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
+        .frame(width: 58)
+        .background(QuickLatePalette.surface.opacity(0.96), in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
                 .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+        .shadow(color: QuickLatePalette.primaryDeep.opacity(0.08), radius: 24, x: 0, y: 14)
         .overlay(alignment: .trailing) {
             if state.preflight.showsDownloadProgress {
                 SetupRailProgressPeekView()
@@ -65,13 +66,13 @@ private struct RailIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(accentColor)
-                .frame(width: 44, height: 44)
+                .frame(width: 42, height: 42)
                 .background(QuickLatePalette.primarySoft, in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(accentColor.opacity(0.22), lineWidth: 1)
+                        .strokeBorder(Color.white.opacity(0.92), lineWidth: 1)
                 }
                 .overlay(alignment: .topTrailing) {
                     if showsAttention {
@@ -123,8 +124,9 @@ private struct SetupRailPeekView: View {
         .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
-                .strokeBorder(QuickLatePalette.hairline, lineWidth: 1)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+        .shadow(color: QuickLatePalette.primaryDeep.opacity(0.12), radius: 24, x: 0, y: 16)
     }
 }
 
@@ -150,8 +152,9 @@ private struct SetupRailProgressPeekView: View {
         .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous)
-                .strokeBorder(QuickLatePalette.hairline, lineWidth: 1)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+        .shadow(color: QuickLatePalette.primaryDeep.opacity(0.12), radius: 24, x: 0, y: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(AppText.languagePackDownloadInProgress)
     }

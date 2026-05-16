@@ -2,38 +2,35 @@ import AppKit
 import SwiftUI
 
 enum QuickLatePalette {
-    static let canvas = adaptive(light: 0xFFFFFF, dark: 0x0A0F14)
-    static let surface = adaptive(light: 0xFFFFFF, dark: 0x121A23)
-    static let surfaceSoft = adaptive(light: 0xF5F6F8, dark: 0x17212B)
-    static let surfaceRaised = adaptive(light: 0xFFFFFF, dark: 0x182330)
-    static let hairline = adaptive(light: 0xD9DEE7, dark: 0x334051)
-    static let hairlineSoft = adaptive(light: 0xE8ECF2, dark: 0x263241)
+    static let canvas = light(0xF3F7FB)
+    static let canvasTop = light(0xFAFCFF)
+    static let surface = light(0xFFFFFF)
+    static let surfaceSoft = light(0xEEF4FA)
+    static let surfaceRaised = light(0xFFFFFF)
+    static let hairline = light(0xD7E0EA)
+    static let hairlineSoft = light(0xE7EEF6)
 
-    static let inkDeep = adaptive(light: 0x0A1317, dark: 0xF6F8FB)
-    static let ink = adaptive(light: 0x1C2A33, dark: 0xE4EAF2)
-    static let slate = adaptive(light: 0x53616D, dark: 0xB8C2CE)
-    static let steel = adaptive(light: 0x74808A, dark: 0x8F9BA8)
+    static let inkDeep = light(0x101A2B)
+    static let ink = light(0x172335)
+    static let slate = light(0x5D6878)
+    static let steel = light(0x8792A1)
     static let onPrimary = Color.white
 
-    static let primary = adaptive(light: 0x0143B5, dark: 0x5B7CFF)
-    static let primaryDeep = adaptive(light: 0x002A73, dark: 0x9AAEFF)
-    static let primarySoft = adaptive(light: 0xE8F0FF, dark: 0x172B5F)
-    static let oculusPurple = adaptive(light: 0x6155D9, dark: 0xA59CFF)
+    static let primary = light(0x0A63D8)
+    static let primaryDeep = light(0x17253A)
+    static let primarySoft = light(0xEAF3FF)
+    static let oculusPurple = light(0x6D68D8)
 
-    static let success = adaptive(light: 0x148A4F, dark: 0x4BD082)
-    static let attention = adaptive(light: 0xC76B10, dark: 0xFFB15C)
-    static let warning = adaptive(light: 0xFFD747, dark: 0xFFD747)
-    static let critical = adaptive(light: 0xC93434, dark: 0xFF6B6B)
+    static let success = light(0x148A4F)
+    static let attention = light(0x9A6200)
+    static let warning = light(0xF5C84B)
+    static let critical = light(0xC93434)
 
     static let originalAccent = primary
     static let translationAccent = primaryDeep
 
-    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                ? nsColor(hex: dark)
-                : nsColor(hex: light)
-        })
+    private static func light(_ hex: UInt32) -> Color {
+        Color(nsColor: nsColor(hex: hex))
     }
 
     private static func nsColor(hex: UInt32) -> NSColor {
@@ -83,9 +80,30 @@ struct QuickLateViewDensityMetrics {
 
 struct QuickLateStageBackground: View {
     var body: some View {
-        QuickLatePalette.canvas
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+        ZStack {
+            LinearGradient(
+                colors: [QuickLatePalette.canvasTop, QuickLatePalette.canvas],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [QuickLatePalette.primarySoft.opacity(0.82), .clear],
+                center: .topTrailing,
+                startRadius: 24,
+                endRadius: 620
+            )
+            .blendMode(.multiply)
+
+            RadialGradient(
+                colors: [Color.white.opacity(0.95), .clear],
+                center: .bottomLeading,
+                startRadius: 36,
+                endRadius: 520
+            )
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
     }
 }
 

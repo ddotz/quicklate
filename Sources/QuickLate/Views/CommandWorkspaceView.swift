@@ -12,10 +12,10 @@ struct CommandWorkspaceView: View {
     }
 
     var body: some View {
-        HStack(spacing: workspaceDensity.workspaceColumnSpacing) {
-            VStack(spacing: 34) {
+        HStack(spacing: 16) {
+            VStack(spacing: 18) {
                 topBar
-                HStack(spacing: workspaceDensity.workspaceColumnSpacing) {
+                HStack(spacing: 18) {
                     TranscriptPaneView(
                         title: AppText.original,
                         subtitle: AppText.originalDescription,
@@ -40,8 +40,7 @@ struct CommandWorkspaceView: View {
                 toggleExpanded: { viewModel.toggleSetupRail() }
             )
         }
-        .padding(.horizontal, 38)
-        .padding(.vertical, 36)
+        .padding(18)
         .onAppear(perform: syncFloatingCaptionVisibility)
         .onReceive(NotificationCenter.default.publisher(for: FloatingCaptionWindowController.visibilityDidChangeNotification)) { _ in
             syncFloatingCaptionVisibility()
@@ -49,13 +48,22 @@ struct CommandWorkspaceView: View {
     }
 
     private var topBar: some View {
-        VStack(alignment: .leading, spacing: workspaceDensity.topBarControlRowSpacing) {
-            HStack(spacing: 20) {
-                QuickLateWordmarkView()
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    QuickLateWordmarkView()
+                    Text(workspaceSummary)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(QuickLatePalette.slate)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    statusBadge
+
                     Button(action: showFloatingCaptions) {
                         TopBarSecondaryActionLabel(
                             title: AppText.floatingCaptions,
@@ -86,7 +94,7 @@ struct CommandWorkspaceView: View {
                 )
 
                 Divider()
-                    .frame(height: 34)
+                    .frame(height: 28)
 
                 languageControls
             }
@@ -95,13 +103,59 @@ struct CommandWorkspaceView: View {
                 LanguagePackDownloadProgressView()
             }
         }
-        .padding(.horizontal, 30)
-        .padding(.vertical, 22)
-        .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
+        .background(QuickLatePalette.surface.opacity(0.94), in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXXL, style: .continuous)
                 .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+        .shadow(color: QuickLatePalette.primaryDeep.opacity(0.06), radius: 26, x: 0, y: 14)
+    }
+
+    private var workspaceSummary: String {
+        let language = AppText.languageSummary(
+            source: viewModel.session.sourceLanguage.localizedTitle,
+            target: viewModel.session.targetLanguage.localizedTitle
+        )
+        return "\(language) · \(WorkspaceProcessingEngine.current(for: viewModel.session).title)"
+    }
+
+    private var statusBadgeTitle: String {
+        switch viewModel.session.applePreflightState.primaryAction {
+        case .start:
+            viewModel.session.isRunning ? AppText.listening : AppText.ready
+        case .wait:
+            AppText.checkingLanguagePacks
+        case .downloadAndStart, .retryDownload:
+            AppText.languagePackNeeded
+        case .changeLanguagePair:
+            AppText.changeLanguagePair
+        case .openSystemSettings:
+            AppText.openPrivacySettings
+        }
+    }
+
+    private var statusBadgeColor: Color {
+        switch viewModel.session.applePreflightState.primaryAction {
+        case .start:
+            viewModel.session.isRunning ? QuickLatePalette.success : QuickLatePalette.primary
+        case .wait:
+            QuickLatePalette.attention
+        case .downloadAndStart, .retryDownload, .changeLanguagePair, .openSystemSettings:
+            QuickLatePalette.attention
+        }
+    }
+
+    private var statusBadge: some View {
+        Text(statusBadgeTitle)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(statusBadgeColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 9)
+            .background(statusBadgeColor.opacity(0.12), in: Capsule())
     }
 
     @ViewBuilder
@@ -230,12 +284,14 @@ struct CommandWorkspaceView: View {
 
     private var primaryActionAccentColor: Color {
         switch viewModel.session.applePreflightState.primaryAction {
-        case .downloadAndStart, .retryDownload, .changeLanguagePair, .openSystemSettings:
+        case .downloadAndStart, .retryDownload:
+            QuickLatePalette.primaryDeep
+        case .changeLanguagePair, .openSystemSettings:
             QuickLatePalette.primary
         case .wait:
             QuickLatePalette.attention
         case .start:
-            viewModel.session.isRunning ? QuickLatePalette.critical : QuickLatePalette.primary
+            viewModel.session.isRunning ? QuickLatePalette.critical : QuickLatePalette.primaryDeep
         }
     }
 
@@ -401,15 +457,15 @@ private struct TopBarSecondaryActionLabel: View {
     var body: some View {
         Label(title, systemImage: systemImage)
             .font(.system(size: workspaceDensity.primaryButtonFontSize, weight: .bold))
-            .foregroundStyle(QuickLatePalette.inkDeep)
+            .foregroundStyle(accentColor)
             .lineLimit(1)
             .minimumScaleFactor(0.86)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(.clear, in: Capsule())
+            .padding(.horizontal, 17)
+            .padding(.vertical, 11)
+            .background(accentColor.opacity(0.11), in: Capsule())
             .overlay {
                 Capsule()
-                    .strokeBorder(QuickLatePalette.inkDeep, lineWidth: 2)
+                    .strokeBorder(accentColor.opacity(0.16), lineWidth: 1)
             }
     }
 }
@@ -428,6 +484,7 @@ private struct TopBarPrimaryActionLabel: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 13)
             .background(accentColor, in: Capsule())
+            .shadow(color: accentColor.opacity(0.18), radius: 16, x: 0, y: 8)
     }
 }
 
