@@ -274,6 +274,14 @@ enum AppText {
     static let homeOpen = localized(english: "Open Home", korean: "홈열기")
     static let appInfo = localized(english: "App Info", korean: "앱 정보")
     static let versionInfo = localized(english: "Version", korean: "버전")
+    static let checkForUpdates = localized(english: "Check for Updates", korean: "업데이트 확인")
+    static let checkingForUpdates = localized(english: "Checking for updates...", korean: "업데이트를 확인하는 중...")
+    static let openUpdatePage = localized(english: "Open Update", korean: "업데이트 열기")
+    static let updateCheckIdle = localized(english: "Check GitHub releases for a newer version.", korean: "GitHub 릴리스에서 새 버전을 확인합니다.")
+    static let updateCheckUpToDate = localized(english: "You're on the latest version.", korean: "최신 버전을 사용 중입니다.")
+    static let updateCheckInvalidResponse = localized(english: "GitHub returned an invalid update response.", korean: "GitHub 업데이트 응답이 올바르지 않습니다.")
+    static let updateCheckInvalidCurrentVersion = localized(english: "The current app version is invalid.", korean: "현재 앱 버전이 올바르지 않습니다.")
+    static let updateCheckInvalidReleaseVersion = localized(english: "The GitHub release version is invalid.", korean: "GitHub 릴리스 버전이 올바르지 않습니다.")
     static let latestErrorInfo = localized(english: "Latest error", korean: "최근 오류")
     static let noErrorInfo = localized(english: "No recent errors", korean: "최근 오류 없음")
     static let floatingDisplay = localized(english: "Floating Display", korean: "플로팅 표시")
@@ -439,6 +447,35 @@ enum AppText {
     static func copyTranscriptPane(_ title: String) -> String {
         localized(english: "Copy \(title)", korean: "\(title) 복사")
     }
+
+    static func updateAvailable(latestVersion: String) -> String {
+        localized(
+            english: "Version \(latestVersion) is available on GitHub.",
+            korean: "GitHub에 \(latestVersion) 버전이 올라왔습니다."
+        )
+    }
+
+    static func updateCheckFailed(_ message: String) -> String {
+        localized(
+            english: "Update check failed: \(message)",
+            korean: "업데이트 확인 실패: \(message)"
+        )
+    }
+
+    static func updateCheckHTTPFailed(statusCode: Int) -> String {
+        localized(
+            english: "GitHub update check failed with HTTP \(statusCode).",
+            korean: "GitHub 업데이트 확인이 HTTP \(statusCode)로 실패했습니다."
+        )
+    }
+
+    static func updateCheckDecodeFailed(_ message: String) -> String {
+        localized(
+            english: "Could not read GitHub release metadata: \(message)",
+            korean: "GitHub 릴리스 정보를 읽지 못했습니다: \(message)"
+        )
+    }
+
     static let listening = localized(english: "Listening", korean: "듣는 중")
     static let idle = localized(english: "Idle", korean: "대기")
     static let noCaptionsYet = localized(english: "No captions yet", korean: "아직 기록 없음")

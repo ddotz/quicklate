@@ -37,6 +37,11 @@ struct QuickLateApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .appInfo) {
+                Button(AppText.checkForUpdates) {
+                    Task { @MainActor in
+                        await session.checkForUpdates()
+                    }
+                }
                 Button(AppText.showMenuBarPopover) {
                     menuBarPanelController.showPopoverFromShortcut()
                 }

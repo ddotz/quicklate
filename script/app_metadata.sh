@@ -2,7 +2,7 @@
 
 APP_NAME="${APP_NAME:-QuickLate}"
 BUNDLE_ID="${BUNDLE_ID:-dev.appcaster.QuickLate}"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.2.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-${BUILD_NUMBER_DEFAULT:-1}}"
 MIN_SYSTEM_VERSION="${MIN_SYSTEM_VERSION:-26.0}"
 CATEGORY="${CATEGORY:-public.app-category.productivity}"

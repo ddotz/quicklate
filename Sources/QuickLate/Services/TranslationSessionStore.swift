@@ -151,6 +151,7 @@ final class TranslationSessionStore {
     var selectedSavedTranscriptID: String?
     var savedDraftSourceText = ""
     var savedDraftTranslationText = ""
+    var updateCheckState = UpdateCheckState.idle
     var isFoundationTranscriptCleanupRunning = false
     private(set) var latestAudioLevel: Float?
     var modelAvailabilityByModelID = Dictionary(
@@ -165,6 +166,7 @@ final class TranslationSessionStore {
     private let translator = AppleTranslationService()
     private let openAITranslator = OpenAITranslationService()
     private let foundationTranscriptPolisher = FoundationTranscriptPolisher()
+    private let updateChecker = GitHubUpdateChecker()
     private let speechOutput = TranslatedSpeechOutput()
     private let openAIRealtimeAudioOutput = OpenAIRealtimeAudioOutput()
     private let assetDownloadCoordinator = AssetDownloadCoordinator()
@@ -336,6 +338,71 @@ final class TranslationSessionStore {
         }
 
         NSWorkspace.shared.open(url)
+    }
+
+    var currentAppVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+    }
+
+    var currentAppBuild: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+    }
+
+    func refreshUpdateAvailabilityIfNeeded() {
+        guard case .idle = updateCheckState else { return }
+        Task { @MainActor in
+            await checkForUpdates(isUserInitiated: false)
+        }
+    }
+
+    func checkForUpdates(isUserInitiated: Bool = true) async {
+        guard !updateCheckState.isChecking else { return }
+
+        updateCheckState = .checking
+        do {
+            let release = try await updateChecker.latestRelease()
+            let availability = AppUpdatePolicy.availability(
+                currentVersion: currentAppVersion,
+                release: release
+            )
+            applyUpdateAvailability(availability, isUserInitiated: isUserInitiated)
+        } catch {
+            let message = error.localizedDescription
+            updateCheckState = .failed(message)
+            if isUserInitiated {
+                showToast(AppText.updateCheckFailed(message))
+            }
+        }
+    }
+
+    func openUpdatePage() {
+        let url = updateCheckState.releaseURL ?? AppIdentity.githubRepositoryURL
+        NSWorkspace.shared.open(url)
+    }
+
+    private func applyUpdateAvailability(_ availability: AppUpdateAvailability, isUserInitiated: Bool) {
+        switch availability {
+        case let .updateAvailable(_, latestVersion, releaseURL):
+            updateCheckState = .updateAvailable(latestVersion: latestVersion, releaseURL: releaseURL)
+            showToast(AppText.updateAvailable(latestVersion: latestVersion))
+        case let .upToDate(_, latestVersion, releaseURL):
+            updateCheckState = .upToDate(latestVersion: latestVersion, releaseURL: releaseURL)
+            if isUserInitiated {
+                showToast(AppText.updateCheckUpToDate)
+            }
+        case let .unavailable(reason):
+            let message: String
+            switch reason {
+            case .invalidCurrentVersion:
+                message = AppText.updateCheckInvalidCurrentVersion
+            case .invalidReleaseVersion:
+                message = AppText.updateCheckInvalidReleaseVersion
+            }
+            updateCheckState = .failed(message)
+            if isUserInitiated {
+                showToast(AppText.updateCheckFailed(message))
+            }
+        }
     }
 
     private func handleStartFailure(_ error: Error) async {

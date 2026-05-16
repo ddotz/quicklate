@@ -58,7 +58,7 @@ struct MenuBarStatusView: View {
             }
 
             if isAppInfoExpanded {
-                MenuBarAppVersionInfo(errorMessage: session.lastErrorMessage)
+                MenuBarAppVersionInfo(session: session)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -271,7 +271,7 @@ private struct MenuBarAppInfoButton: View {
 }
 
 private struct MenuBarAppVersionInfo: View {
-    let errorMessage: String?
+    @Bindable var session: TranslationSessionStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -288,7 +288,11 @@ private struct MenuBarAppVersionInfo: View {
 
             Divider()
 
-            if let errorMessage, !errorMessage.isEmpty {
+            updateSection
+
+            Divider()
+
+            if let errorMessage = session.lastErrorMessage, !errorMessage.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(AppText.latestErrorInfo, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption.weight(.semibold))
@@ -311,12 +315,82 @@ private struct MenuBarAppVersionInfo: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
+        .onAppear {
+            session.refreshUpdateAvailabilityIfNeeded()
+        }
+    }
+
+    private var updateSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(updateStatusText, systemImage: updateStatusImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(updateStatusColor)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Button(AppText.checkForUpdates) {
+                    Task { @MainActor in
+                        await session.checkForUpdates()
+                    }
+                }
+                .buttonStyle(.borderless)
+                .disabled(session.updateCheckState.isChecking)
+
+                if session.updateCheckState.releaseURL != nil {
+                    Button(AppText.openUpdatePage) {
+                        session.openUpdatePage()
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+    }
+
+    private var updateStatusText: String {
+        switch session.updateCheckState {
+        case .idle:
+            AppText.updateCheckIdle
+        case .checking:
+            AppText.checkingForUpdates
+        case let .updateAvailable(latestVersion, _):
+            AppText.updateAvailable(latestVersion: latestVersion)
+        case .upToDate:
+            AppText.updateCheckUpToDate
+        case let .failed(message):
+            AppText.updateCheckFailed(message)
+        }
+    }
+
+    private var updateStatusImage: String {
+        switch session.updateCheckState {
+        case .idle:
+            "arrow.triangle.2.circlepath"
+        case .checking:
+            "hourglass"
+        case .updateAvailable:
+            "arrow.down.circle.fill"
+        case .upToDate:
+            "checkmark.seal.fill"
+        case .failed:
+            "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var updateStatusColor: Color {
+        switch session.updateCheckState {
+        case .updateAvailable:
+            QuickLatePalette.primary
+        case .upToDate:
+            QuickLatePalette.success
+        case .failed:
+            QuickLatePalette.critical
+        case .idle, .checking:
+            QuickLatePalette.slate
+        }
     }
 
     private var versionText: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return "\(version) (\(build))"
+        "\(session.currentAppVersion) (\(session.currentAppBuild))"
     }
 }
 
