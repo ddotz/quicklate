@@ -107,7 +107,7 @@ final class MenuBarPanelController: NSObject, NSPopoverDelegate {
         applyMenuBarAppearance(to: button)
         let title = menuBarTitle(for: session)
 
-        statusItem?.length = 28
+        statusItem?.length = 30
         button.attributedTitle = NSAttributedString(string: "")
         button.image = MenuBarMiniAppIconRenderer.image()
         button.toolTip = session.statusMessage
@@ -168,10 +168,10 @@ private enum MenuBarMiniAppIconRenderer {
             return nil
         }
 
-        let image = NSImage(size: NSSize(width: 18, height: 18))
+        let image = NSImage(size: NSSize(width: 20, height: 20))
         image.lockFocus()
         source.draw(
-            in: NSRect(x: 1, y: 1, width: 16, height: 16),
+            in: NSRect(x: 0, y: 0, width: 20, height: 20),
             from: .zero,
             operation: .sourceOver,
             fraction: 1,
@@ -184,20 +184,20 @@ private enum MenuBarMiniAppIconRenderer {
     }
 
     private static func fallbackTemplateImage() -> NSImage {
-        let image = NSImage(size: NSSize(width: 18, height: 18))
+        let image = NSImage(size: NSSize(width: 20, height: 20))
         image.lockFocus()
         NSColor.black.setStroke()
-        let ring = NSBezierPath(ovalIn: NSRect(x: 3.1, y: 3.4, width: 11.1, height: 11.1))
-        ring.lineWidth = 3.1
+        let ring = NSBezierPath(ovalIn: NSRect(x: 2.7, y: 3.0, width: 13.0, height: 13.0))
+        ring.lineWidth = 3.2
         ring.lineCapStyle = .round
         ring.lineJoinStyle = .round
         ring.stroke()
         let tail = NSBezierPath()
-        tail.lineWidth = 3.1
+        tail.lineWidth = 3.2
         tail.lineCapStyle = .round
         tail.lineJoinStyle = .round
-        tail.move(to: NSPoint(x: 10.8, y: 6.2))
-        tail.line(to: NSPoint(x: 15.0, y: 2.8))
+        tail.move(to: NSPoint(x: 12.0, y: 7.0))
+        tail.line(to: NSPoint(x: 17.2, y: 3.0))
         tail.stroke()
         image.unlockFocus()
         image.isTemplate = true

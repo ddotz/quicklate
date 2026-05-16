@@ -116,6 +116,10 @@ assert_settings_owns_setup_controls() {
   ! grep -q 'SettingsLink' Sources/QuickLate/Views/MenuBarStatusView.swift
   ! grep -q 'SettingsLink' Sources/QuickLate/Views/CommandWorkspaceView.swift
   grep -q 'NSSize(width: 360, height: 520)' Sources/QuickLate/Support/MenuBarPanelController.swift
+  grep -q 'statusItem?.length = 30' Sources/QuickLate/Support/MenuBarPanelController.swift
+  grep -q 'NSSize(width: 20, height: 20)' Sources/QuickLate/Support/MenuBarPanelController.swift
+  grep -q 'width: 20, height: 20' Sources/QuickLate/Support/MenuBarPanelController.swift
+  ! grep -q 'width: 16, height: 16' Sources/QuickLate/Support/MenuBarPanelController.swift
   grep -q 'SettingsControlMetrics.controlHeight' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'HStack(alignment: .bottom, spacing: 10)' Sources/QuickLate/Views/SettingsView.swift
   grep -q '이미 켜져 보인다면' Sources/QuickLate/Models/AppText.swift
