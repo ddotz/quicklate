@@ -5,7 +5,7 @@ enum UpdateCheckState: Equatable {
     case checking
     case updateAvailable(latestVersion: String, releaseURL: URL, packageURL: URL?)
     case downloading(latestVersion: String)
-    case downloaded(latestVersion: String, fileURL: URL)
+    case installing(latestVersion: String)
     case upToDate(latestVersion: String, releaseURL: URL)
     case failed(String)
 
@@ -13,25 +13,16 @@ enum UpdateCheckState: Equatable {
         switch self {
         case let .updateAvailable(_, releaseURL, _), let .upToDate(_, releaseURL):
             releaseURL
-        case .idle, .checking, .downloading, .downloaded, .failed:
-            nil
-        }
-    }
-
-    var downloadedFileURL: URL? {
-        switch self {
-        case let .downloaded(_, fileURL):
-            fileURL
-        case .idle, .checking, .updateAvailable, .downloading, .upToDate, .failed:
+        case .idle, .checking, .downloading, .installing, .failed:
             nil
         }
     }
 
     var isChecking: Bool {
         switch self {
-        case .checking, .downloading:
+        case .checking, .downloading, .installing:
             true
-        case .idle, .updateAvailable, .downloaded, .upToDate, .failed:
+        case .idle, .updateAvailable, .upToDate, .failed:
             false
         }
     }

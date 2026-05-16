@@ -278,12 +278,16 @@ enum AppText {
     static let checkingForUpdates = localized(english: "Checking for updates...", korean: "업데이트를 확인하는 중...")
     static let proceedUpdate = localized(english: "Update Now", korean: "업데이트 진행")
     static let downloadingUpdate = localized(english: "Downloading update...", korean: "업데이트를 다운로드하는 중...")
-    static let openDownloadedUpdate = localized(english: "Open Downloaded Update", korean: "다운로드한 업데이트 열기")
+    static let installingUpdate = localized(english: "Installing update and relaunching...", korean: "업데이트를 설치하고 다시 여는 중...")
     static let updateCheckIdle = localized(english: "Check GitHub releases for a newer version.", korean: "GitHub 릴리스에서 새 버전을 확인합니다.")
     static let updateCheckUpToDate = localized(english: "You're on the latest version.", korean: "최신 버전을 사용 중입니다.")
     static let updatePackageUnavailable = localized(english: "No downloadable update package was attached. Opening the release page.", korean: "첨부된 업데이트 패키지가 없어 릴리스 페이지를 엽니다.")
     static let updateDownloadInvalidResponse = localized(english: "GitHub returned an invalid update download response.", korean: "GitHub 업데이트 다운로드 응답이 올바르지 않습니다.")
-    static let updateDownloadFolderUnavailable = localized(english: "Could not find the Downloads folder.", korean: "다운로드 폴더를 찾지 못했습니다.")
+    static let selfUpdateCurrentBundleUnavailable = localized(english: "QuickLate is not running from an app bundle.", korean: "QuickLate가 앱 번들에서 실행 중이 아닙니다.")
+    static let selfUpdateUnsupportedPackage = localized(english: "The update package must be a ZIP or DMG file.", korean: "업데이트 패키지는 ZIP 또는 DMG 파일이어야 합니다.")
+    static let selfUpdatePackageDoesNotContainApp = localized(english: "The update package does not contain QuickLate.app.", korean: "업데이트 패키지에 QuickLate.app이 없습니다.")
+    static let selfUpdateInvalidAppBundle = localized(english: "The update package contains an invalid app bundle.", korean: "업데이트 패키지의 앱 번들이 올바르지 않습니다.")
+    static let selfUpdateBundleIdentifierMismatch = localized(english: "The update package app identity does not match this QuickLate app.", korean: "업데이트 패키지의 앱 식별자가 현재 QuickLate와 다릅니다.")
     static let updateCheckInvalidResponse = localized(english: "GitHub returned an invalid update response.", korean: "GitHub 업데이트 응답이 올바르지 않습니다.")
     static let updateCheckInvalidCurrentVersion = localized(english: "The current app version is invalid.", korean: "현재 앱 버전이 올바르지 않습니다.")
     static let updateCheckInvalidReleaseVersion = localized(english: "The GitHub release version is invalid.", korean: "GitHub 릴리스 버전이 올바르지 않습니다.")
@@ -467,13 +471,6 @@ enum AppText {
         )
     }
 
-    static func updateDownloaded(latestVersion: String) -> String {
-        localized(
-            english: "QuickLate \(latestVersion) was downloaded to Downloads.",
-            korean: "QuickLate \(latestVersion) 업데이트 파일을 다운로드 폴더에 받았습니다."
-        )
-    }
-
     static func updateDownloadFailed(_ message: String) -> String {
         localized(
             english: "Update download failed: \(message)",
@@ -481,10 +478,38 @@ enum AppText {
         )
     }
 
+    static func updateInstallFailed(_ message: String) -> String {
+        localized(
+            english: "Self-update failed: \(message)",
+            korean: "자동 업데이트 실패: \(message)"
+        )
+    }
+
     static func updateDownloadHTTPFailed(statusCode: Int) -> String {
         localized(
             english: "GitHub update download failed with HTTP \(statusCode).",
             korean: "GitHub 업데이트 다운로드가 HTTP \(statusCode)로 실패했습니다."
+        )
+    }
+
+    static func selfUpdateTargetNotWritable(_ path: String) -> String {
+        localized(
+            english: "QuickLate cannot update itself because \(path) is not writable.",
+            korean: "\(path)에 쓸 수 없어 QuickLate를 자동 업데이트할 수 없습니다."
+        )
+    }
+
+    static func selfUpdateVersionMismatch(expected: String, actual: String) -> String {
+        localized(
+            english: "The update package version is \(actual), not \(expected).",
+            korean: "업데이트 패키지 버전이 \(expected)가 아니라 \(actual)입니다."
+        )
+    }
+
+    static func selfUpdateCommandFailed(_ output: String) -> String {
+        localized(
+            english: "The self-update installer failed. \(output)",
+            korean: "자동 업데이트 설치가 실패했습니다. \(output)"
         )
     }
 

@@ -168,6 +168,7 @@ final class TranslationSessionStore {
     private let foundationTranscriptPolisher = FoundationTranscriptPolisher()
     private let updateChecker = GitHubUpdateChecker()
     private let updatePackageDownloader = GitHubUpdatePackageDownloader()
+    private let selfUpdateInstaller = SelfUpdateInstaller()
     private let speechOutput = TranslatedSpeechOutput()
     private let openAIRealtimeAudioOutput = OpenAIRealtimeAudioOutput()
     private let assetDownloadCoordinator = AssetDownloadCoordinator()
@@ -382,8 +383,6 @@ final class TranslationSessionStore {
 
     func proceedUpdate() {
         switch updateCheckState {
-        case let .downloaded(_, fileURL):
-            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
         case let .updateAvailable(latestVersion, releaseURL, packageURL):
             guard let packageURL else {
                 showToast(AppText.updatePackageUnavailable)
@@ -391,7 +390,7 @@ final class TranslationSessionStore {
                 return
             }
             Task { @MainActor in
-                await downloadUpdatePackage(latestVersion: latestVersion, packageURL: packageURL)
+                await performSelfUpdate(latestVersion: latestVersion, packageURL: packageURL)
             }
         default:
             let url = updateCheckState.releaseURL ?? AppIdentity.githubRepositoryURL
@@ -399,20 +398,22 @@ final class TranslationSessionStore {
         }
     }
 
-    private func downloadUpdatePackage(latestVersion: String, packageURL: URL) async {
+    private func performSelfUpdate(latestVersion: String, packageURL: URL) async {
         updateCheckState = .downloading(latestVersion: latestVersion)
         do {
             let fileURL = try await updatePackageDownloader.downloadPackage(
                 from: packageURL,
                 latestVersion: latestVersion
             )
-            updateCheckState = .downloaded(latestVersion: latestVersion, fileURL: fileURL)
-            showToast(AppText.updateDownloaded(latestVersion: latestVersion))
-            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+            updateCheckState = .installing(latestVersion: latestVersion)
+            try selfUpdateInstaller.stageAndLaunchInstall(
+                packageURL: fileURL,
+                latestVersion: latestVersion
+            )
         } catch {
             let message = error.localizedDescription
             updateCheckState = .failed(message)
-            showToast(AppText.updateDownloadFailed(message))
+            showToast(AppText.updateInstallFailed(message))
         }
     }
 

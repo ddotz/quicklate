@@ -361,8 +361,8 @@ private struct MenuBarAppVersionInfo: View {
             AppText.updateAvailable(latestVersion: latestVersion)
         case let .downloading(latestVersion):
             "\(AppText.downloadingUpdate) \(latestVersion)"
-        case let .downloaded(latestVersion, _):
-            AppText.updateDownloaded(latestVersion: latestVersion)
+        case let .installing(latestVersion):
+            "\(AppText.installingUpdate) \(latestVersion)"
         case .upToDate:
             AppText.updateCheckUpToDate
         case let .failed(message):
@@ -374,12 +374,10 @@ private struct MenuBarAppVersionInfo: View {
         switch session.updateCheckState {
         case .idle:
             "arrow.triangle.2.circlepath"
-        case .checking, .downloading:
+        case .checking, .downloading, .installing:
             "hourglass"
         case .updateAvailable:
             "arrow.down.circle.fill"
-        case .downloaded:
-            "checkmark.circle.fill"
         case .upToDate:
             "checkmark.seal.fill"
         case .failed:
@@ -391,25 +389,25 @@ private struct MenuBarAppVersionInfo: View {
         switch session.updateCheckState {
         case .updateAvailable:
             QuickLatePalette.primary
-        case .downloaded, .upToDate:
+        case .upToDate:
             QuickLatePalette.success
         case .failed:
             QuickLatePalette.critical
-        case .idle, .checking, .downloading:
+        case .idle, .checking, .downloading, .installing:
             QuickLatePalette.slate
         }
     }
 
     private var canProceedUpdate: Bool {
-        session.updateCheckState.releaseURL != nil || session.updateCheckState.downloadedFileURL != nil
+        session.updateCheckState.releaseURL != nil
     }
 
     private var proceedUpdateButtonTitle: String {
         switch session.updateCheckState {
-        case .downloaded:
-            AppText.openDownloadedUpdate
         case .downloading:
             AppText.downloadingUpdate
+        case .installing:
+            AppText.installingUpdate
         default:
             AppText.proceedUpdate
         }
@@ -417,9 +415,7 @@ private struct MenuBarAppVersionInfo: View {
 
     private var proceedUpdateButtonImage: String {
         switch session.updateCheckState {
-        case .downloaded:
-            "folder"
-        case .downloading:
+        case .downloading, .installing:
             "hourglass"
         default:
             "arrow.down.circle"

@@ -31,20 +31,19 @@ struct GitHubUpdatePackageDownloader {
     }
 
     private func destinationURL(for packageURL: URL, latestVersion: String) throws -> URL {
-        guard let downloadsURL = fileManager.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
-            throw GitHubUpdateDownloadError.downloadsDirectoryUnavailable
-        }
+        let updateRoot = fileManager.temporaryDirectory
+            .appendingPathComponent("QuickLate-SelfUpdate-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: updateRoot, withIntermediateDirectories: true)
 
         let extensionName = packageURL.pathExtension.isEmpty ? "zip" : packageURL.pathExtension
         let fileName = "QuickLate-\(latestVersion).\(extensionName)"
-        return downloadsURL.appendingPathComponent(fileName)
+        return updateRoot.appendingPathComponent(fileName)
     }
 }
 
 enum GitHubUpdateDownloadError: LocalizedError {
     case invalidResponse
     case httpStatus(Int)
-    case downloadsDirectoryUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -52,8 +51,6 @@ enum GitHubUpdateDownloadError: LocalizedError {
             AppText.updateDownloadInvalidResponse
         case let .httpStatus(statusCode):
             AppText.updateDownloadHTTPFailed(statusCode: statusCode)
-        case .downloadsDirectoryUnavailable:
-            AppText.updateDownloadFolderUnavailable
         }
     }
 }
