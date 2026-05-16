@@ -327,20 +327,24 @@ private struct MenuBarAppVersionInfo: View {
                 .foregroundStyle(updateStatusColor)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 8) {
-                Button(AppText.checkForUpdates) {
+            HStack(spacing: 7) {
+                MenuBarUpdateButton(
+                    title: AppText.checkForUpdates,
+                    systemImage: "arrow.triangle.2.circlepath",
+                    isDisabled: session.updateCheckState.isChecking
+                ) {
                     Task { @MainActor in
                         await session.checkForUpdates()
                     }
                 }
-                .buttonStyle(.borderless)
-                .disabled(session.updateCheckState.isChecking)
 
                 if session.updateCheckState.releaseURL != nil {
-                    Button(AppText.openUpdatePage) {
+                    MenuBarUpdateButton(
+                        title: AppText.openUpdatePage,
+                        systemImage: "arrow.up.right.square"
+                    ) {
                         session.openUpdatePage()
                     }
-                    .buttonStyle(.borderless)
                 }
             }
         }
@@ -391,6 +395,41 @@ private struct MenuBarAppVersionInfo: View {
 
     private var versionText: String {
         "\(session.currentAppVersion) (\(session.currentAppBuild))"
+    }
+}
+
+private struct MenuBarUpdateButton: View {
+    let title: String
+    let systemImage: String
+    var isDisabled = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.system(size: buttonFontSize, weight: .bold))
+                Text(title)
+                    .font(.system(size: buttonFontSize, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+            }
+            .foregroundStyle(isDisabled ? QuickLatePalette.steel : QuickLatePalette.primary)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background((isDisabled ? QuickLatePalette.steel : QuickLatePalette.primary).opacity(0.10), in: Capsule())
+            .overlay {
+                Capsule().strokeBorder((isDisabled ? QuickLatePalette.steel : QuickLatePalette.primary).opacity(0.18), lineWidth: 1)
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .accessibilityLabel(title)
+    }
+
+    private var buttonFontSize: CGFloat {
+        CGFloat(QuickLateUIDensityMetrics.comfortableDesktop.menuBarUpdateButtonFontSize)
     }
 }
 

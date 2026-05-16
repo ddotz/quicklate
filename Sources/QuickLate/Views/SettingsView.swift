@@ -1,3 +1,4 @@
+import QuickLateCore
 import SwiftUI
 @preconcurrency import Translation
 
@@ -34,6 +35,10 @@ struct SettingsView: View {
 
                 SettingsCard(title: AppText.appAndPermissions, systemImage: "macwindow") {
                     appAndPermissionsSection
+                }
+
+                SettingsCard(title: AppText.versionInfo, systemImage: "number") {
+                    settingsVersionAndUpdatesSection
                 }
             }
             .padding(22)
@@ -293,6 +298,93 @@ struct SettingsView: View {
                 )
             }
         }
+    }
+
+    private var settingsVersionAndUpdatesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label("\(session.currentAppVersion) (\(session.currentAppBuild))", systemImage: "number")
+                    .font(.system(size: settingsVersionFooterFontSize, weight: .bold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                SettingsActionButton(
+                    title: AppText.checkForUpdates,
+                    systemImage: "arrow.triangle.2.circlepath",
+                    action: {
+                        Task { @MainActor in
+                            await session.checkForUpdates()
+                        }
+                    },
+                    isDisabled: session.updateCheckState.isChecking
+                )
+
+                if session.updateCheckState.releaseURL != nil {
+                    SettingsActionButton(
+                        title: AppText.openUpdatePage,
+                        systemImage: "arrow.up.right.square",
+                        action: { session.openUpdatePage() }
+                    )
+                }
+            }
+
+            Label(settingsUpdateStatusText, systemImage: settingsUpdateStatusImage)
+                .font(.system(size: settingsVersionFooterFontSize, weight: .semibold))
+                .foregroundStyle(settingsUpdateStatusColor)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear {
+            session.refreshUpdateAvailabilityIfNeeded()
+        }
+    }
+
+    private var settingsUpdateStatusText: String {
+        switch session.updateCheckState {
+        case .idle:
+            AppText.updateCheckIdle
+        case .checking:
+            AppText.checkingForUpdates
+        case let .updateAvailable(latestVersion, _):
+            AppText.updateAvailable(latestVersion: latestVersion)
+        case .upToDate:
+            AppText.updateCheckUpToDate
+        case let .failed(message):
+            AppText.updateCheckFailed(message)
+        }
+    }
+
+    private var settingsUpdateStatusImage: String {
+        switch session.updateCheckState {
+        case .idle:
+            "arrow.triangle.2.circlepath"
+        case .checking:
+            "hourglass"
+        case .updateAvailable:
+            "arrow.down.circle.fill"
+        case .upToDate:
+            "checkmark.seal.fill"
+        case .failed:
+            "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var settingsUpdateStatusColor: Color {
+        switch session.updateCheckState {
+        case .updateAvailable:
+            QuickLatePalette.primary
+        case .upToDate:
+            QuickLatePalette.success
+        case .failed:
+            QuickLatePalette.critical
+        case .idle, .checking:
+            QuickLatePalette.slate
+        }
+    }
+
+    private var settingsVersionFooterFontSize: CGFloat {
+        CGFloat(QuickLateUIDensityMetrics.comfortableDesktop.settingsVersionFooterFontSize)
     }
 
     private var processingEngineBinding: Binding<SettingsProcessingEngine> {

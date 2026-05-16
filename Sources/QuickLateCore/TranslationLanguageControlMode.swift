@@ -52,6 +52,8 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
     public let languageChipMinimumScaleFactor: Double
     public let topBarControlRowSpacing: Double
     public let workspaceColumnSpacing: Double
+    public let menuBarUpdateButtonFontSize: Double
+    public let settingsVersionFooterFontSize: Double
 
     public init(
         workspaceTitleFontSize: Double,
@@ -64,7 +66,9 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
         languageChipLineLimit: Int,
         languageChipMinimumScaleFactor: Double,
         topBarControlRowSpacing: Double,
-        workspaceColumnSpacing: Double
+        workspaceColumnSpacing: Double,
+        menuBarUpdateButtonFontSize: Double,
+        settingsVersionFooterFontSize: Double
     ) {
         self.workspaceTitleFontSize = workspaceTitleFontSize
         self.transcriptTitleFontSize = transcriptTitleFontSize
@@ -77,6 +81,8 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
         self.languageChipMinimumScaleFactor = languageChipMinimumScaleFactor
         self.topBarControlRowSpacing = topBarControlRowSpacing
         self.workspaceColumnSpacing = workspaceColumnSpacing
+        self.menuBarUpdateButtonFontSize = menuBarUpdateButtonFontSize
+        self.settingsVersionFooterFontSize = settingsVersionFooterFontSize
     }
 
     public static let comfortableDesktop = QuickLateUIDensityMetrics(
@@ -90,6 +96,8 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
         languageChipLineLimit: 1,
         languageChipMinimumScaleFactor: 0.82,
         topBarControlRowSpacing: 18,
-        workspaceColumnSpacing: 32
+        workspaceColumnSpacing: 32,
+        menuBarUpdateButtonFontSize: 10.5,
+        settingsVersionFooterFontSize: 12
     )
 }

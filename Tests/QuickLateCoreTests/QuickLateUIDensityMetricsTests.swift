@@ -22,4 +22,13 @@ struct QuickLateUIDensityMetricsTests {
         #expect(metrics.topBarControlRowSpacing >= 16)
         #expect(metrics.workspaceColumnSpacing >= 28)
     }
+
+    @Test
+    func updateControlsStayCompactAndReadable() {
+        let metrics = QuickLateUIDensityMetrics.comfortableDesktop
+
+        #expect(metrics.menuBarUpdateButtonFontSize <= 11)
+        #expect(metrics.settingsVersionFooterFontSize <= 12)
+        #expect(metrics.menuBarUpdateButtonFontSize < metrics.primaryButtonFontSize)
+    }
 }
