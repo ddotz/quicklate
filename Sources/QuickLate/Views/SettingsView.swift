@@ -167,13 +167,10 @@ struct SettingsView: View {
                     .textFieldStyle(.plain)
                     .modifier(SettingsTextFieldSurface())
 
-                SettingsToggleRow(
+                SettingsCompactCheckboxButton(
                     title: AppText.glossaryHardRule,
-                    subtitle: nil,
-                    systemImage: "pin",
                     isOn: $glossaryHardRule
                 )
-                .frame(width: 136)
 
                 SettingsActionButton(
                     title: AppText.glossaryAddOrUpdate,
@@ -842,6 +839,58 @@ private struct SettingsActionButton: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.48 : 1)
+    }
+}
+
+private struct SettingsCompactCheckboxButton: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    private var metrics: QuickLateUIDensityMetrics {
+        QuickLateUIDensityMetrics.comfortableDesktop
+    }
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isOn ? QuickLatePalette.primary : QuickLatePalette.surface)
+                    if isOn {
+                        Image(systemName: "checkmark")
+                            .font(.caption2.weight(.black))
+                            .foregroundStyle(QuickLatePalette.onPrimary)
+                    }
+                }
+                .frame(width: 22, height: 22)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(
+                            isOn ? QuickLatePalette.primary : settingsCheckboxBorderColor,
+                            lineWidth: isOn ? 1 : settingsCheckboxBorderWidth
+                        )
+                }
+
+                Text(title)
+                    .font(.system(size: metrics.glossaryHardRuleToggleFontSize, weight: .semibold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
+            }
+            .padding(.horizontal, 12)
+            .frame(
+                minWidth: metrics.glossaryHardRuleToggleMinWidth,
+                minHeight: SettingsControlMetrics.controlHeight,
+                alignment: .leading
+            )
+            .background(QuickLatePalette.surfaceSoft, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 

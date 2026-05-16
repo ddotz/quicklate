@@ -31,4 +31,12 @@ struct QuickLateUIDensityMetricsTests {
         #expect(metrics.settingsVersionFooterFontSize <= 12)
         #expect(metrics.menuBarUpdateButtonFontSize < metrics.primaryButtonFontSize)
     }
+
+    @Test
+    func glossaryHardRuleToggleHasRoomForKoreanLabel() {
+        let metrics = QuickLateUIDensityMetrics.comfortableDesktop
+
+        #expect(metrics.glossaryHardRuleToggleMinWidth >= 116)
+        #expect(metrics.glossaryHardRuleToggleFontSize <= 12)
+    }
 }

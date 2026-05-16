@@ -54,6 +54,8 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
     public let workspaceColumnSpacing: Double
     public let menuBarUpdateButtonFontSize: Double
     public let settingsVersionFooterFontSize: Double
+    public let glossaryHardRuleToggleMinWidth: Double
+    public let glossaryHardRuleToggleFontSize: Double
 
     public init(
         workspaceTitleFontSize: Double,
@@ -68,7 +70,9 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
         topBarControlRowSpacing: Double,
         workspaceColumnSpacing: Double,
         menuBarUpdateButtonFontSize: Double,
-        settingsVersionFooterFontSize: Double
+        settingsVersionFooterFontSize: Double,
+        glossaryHardRuleToggleMinWidth: Double,
+        glossaryHardRuleToggleFontSize: Double
     ) {
         self.workspaceTitleFontSize = workspaceTitleFontSize
         self.transcriptTitleFontSize = transcriptTitleFontSize
@@ -83,6 +87,8 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
         self.workspaceColumnSpacing = workspaceColumnSpacing
         self.menuBarUpdateButtonFontSize = menuBarUpdateButtonFontSize
         self.settingsVersionFooterFontSize = settingsVersionFooterFontSize
+        self.glossaryHardRuleToggleMinWidth = glossaryHardRuleToggleMinWidth
+        self.glossaryHardRuleToggleFontSize = glossaryHardRuleToggleFontSize
     }
 
     public static let comfortableDesktop = QuickLateUIDensityMetrics(
@@ -98,6 +104,8 @@ public struct QuickLateUIDensityMetrics: Equatable, Sendable {
         topBarControlRowSpacing: 18,
         workspaceColumnSpacing: 32,
         menuBarUpdateButtonFontSize: 10.5,
-        settingsVersionFooterFontSize: 12
+        settingsVersionFooterFontSize: 12,
+        glossaryHardRuleToggleMinWidth: 124,
+        glossaryHardRuleToggleFontSize: 12
     )
 }
