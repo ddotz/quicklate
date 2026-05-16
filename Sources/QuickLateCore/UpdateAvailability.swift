@@ -1,14 +1,39 @@
 import Foundation
 
+public struct GitHubReleaseAsset: Decodable, Equatable, Sendable {
+    public let name: String
+    public let browserDownloadURL: URL
+    public let size: Int
+
+    public init(name: String, browserDownloadURL: URL, size: Int) {
+        self.name = name
+        self.browserDownloadURL = browserDownloadURL
+        self.size = size
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name
+        case browserDownloadURL = "browser_download_url"
+        case size
+    }
+}
+
 public struct GitHubReleaseInfo: Decodable, Equatable, Sendable {
     public let tagName: String
     public let name: String
     public let htmlURL: URL
+    public let assets: [GitHubReleaseAsset]
 
-    public init(tagName: String, name: String, htmlURL: URL) {
+    public init(
+        tagName: String,
+        name: String,
+        htmlURL: URL,
+        assets: [GitHubReleaseAsset] = []
+    ) {
         self.tagName = tagName
         self.name = name
         self.htmlURL = htmlURL
+        self.assets = assets
     }
 
     public init(from decoder: Decoder) throws {
@@ -16,12 +41,35 @@ public struct GitHubReleaseInfo: Decodable, Equatable, Sendable {
         tagName = try container.decode(String.self, forKey: .tagName)
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? tagName
         htmlURL = try container.decode(URL.self, forKey: .htmlURL)
+        assets = try container.decodeIfPresent([GitHubReleaseAsset].self, forKey: .assets) ?? []
+    }
+
+    public var primaryUpdatePackageURL: URL? {
+        primaryUpdatePackageAsset?.browserDownloadURL
+    }
+
+    public var primaryUpdatePackageAsset: GitHubReleaseAsset? {
+        let packageAssets = assets.filter { asset in
+            let lowercasedName = asset.name.lowercased()
+            let isSupportedPackage = lowercasedName.hasSuffix(".zip") || lowercasedName.hasSuffix(".dmg")
+            return isSupportedPackage && lowercasedName.contains("quicklate")
+        }
+
+        return packageAssets.sorted { lhs, rhs in
+            let lhsName = lhs.name.lowercased()
+            let rhsName = rhs.name.lowercased()
+            if lhsName.hasSuffix(".zip") != rhsName.hasSuffix(".zip") {
+                return lhsName.hasSuffix(".zip")
+            }
+            return lhs.name < rhs.name
+        }.first
     }
 
     private enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
         case name
         case htmlURL = "html_url"
+        case assets
     }
 }
 

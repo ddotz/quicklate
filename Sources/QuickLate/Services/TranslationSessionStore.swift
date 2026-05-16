@@ -167,6 +167,7 @@ final class TranslationSessionStore {
     private let openAITranslator = OpenAITranslationService()
     private let foundationTranscriptPolisher = FoundationTranscriptPolisher()
     private let updateChecker = GitHubUpdateChecker()
+    private let updatePackageDownloader = GitHubUpdatePackageDownloader()
     private let speechOutput = TranslatedSpeechOutput()
     private let openAIRealtimeAudioOutput = OpenAIRealtimeAudioOutput()
     private let assetDownloadCoordinator = AssetDownloadCoordinator()
@@ -365,7 +366,11 @@ final class TranslationSessionStore {
                 currentVersion: currentAppVersion,
                 release: release
             )
-            applyUpdateAvailability(availability, isUserInitiated: isUserInitiated)
+            applyUpdateAvailability(
+                availability,
+                release: release,
+                isUserInitiated: isUserInitiated
+            )
         } catch {
             let message = error.localizedDescription
             updateCheckState = .failed(message)
@@ -375,15 +380,54 @@ final class TranslationSessionStore {
         }
     }
 
-    func openUpdatePage() {
-        let url = updateCheckState.releaseURL ?? AppIdentity.githubRepositoryURL
-        NSWorkspace.shared.open(url)
+    func proceedUpdate() {
+        switch updateCheckState {
+        case let .downloaded(_, fileURL):
+            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+        case let .updateAvailable(latestVersion, releaseURL, packageURL):
+            guard let packageURL else {
+                showToast(AppText.updatePackageUnavailable)
+                NSWorkspace.shared.open(releaseURL)
+                return
+            }
+            Task { @MainActor in
+                await downloadUpdatePackage(latestVersion: latestVersion, packageURL: packageURL)
+            }
+        default:
+            let url = updateCheckState.releaseURL ?? AppIdentity.githubRepositoryURL
+            NSWorkspace.shared.open(url)
+        }
     }
 
-    private func applyUpdateAvailability(_ availability: AppUpdateAvailability, isUserInitiated: Bool) {
+    private func downloadUpdatePackage(latestVersion: String, packageURL: URL) async {
+        updateCheckState = .downloading(latestVersion: latestVersion)
+        do {
+            let fileURL = try await updatePackageDownloader.downloadPackage(
+                from: packageURL,
+                latestVersion: latestVersion
+            )
+            updateCheckState = .downloaded(latestVersion: latestVersion, fileURL: fileURL)
+            showToast(AppText.updateDownloaded(latestVersion: latestVersion))
+            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+        } catch {
+            let message = error.localizedDescription
+            updateCheckState = .failed(message)
+            showToast(AppText.updateDownloadFailed(message))
+        }
+    }
+
+    private func applyUpdateAvailability(
+        _ availability: AppUpdateAvailability,
+        release: GitHubReleaseInfo,
+        isUserInitiated: Bool
+    ) {
         switch availability {
         case let .updateAvailable(_, latestVersion, releaseURL):
-            updateCheckState = .updateAvailable(latestVersion: latestVersion, releaseURL: releaseURL)
+            updateCheckState = .updateAvailable(
+                latestVersion: latestVersion,
+                releaseURL: releaseURL,
+                packageURL: release.primaryUpdatePackageURL
+            )
             showToast(AppText.updateAvailable(latestVersion: latestVersion))
         case let .upToDate(_, latestVersion, releaseURL):
             updateCheckState = .upToDate(latestVersion: latestVersion, releaseURL: releaseURL)

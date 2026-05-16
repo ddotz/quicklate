@@ -100,4 +100,31 @@ struct UpdateAvailabilityTests {
 
         #expect(release.name == "v1.2.0")
     }
+
+    @Test
+    func selectsQuickLateZipAssetForUpdatePackage() throws {
+        let json = #"""
+        {
+          "tag_name": "v1.3.0",
+          "name": "QuickLate 1.3.0",
+          "html_url": "https://github.com/ddotz/quicklate/releases/tag/v1.3.0",
+          "assets": [
+            {
+              "name": "notes.txt",
+              "browser_download_url": "https://github.com/ddotz/quicklate/releases/download/v1.3.0/notes.txt",
+              "size": 128
+            },
+            {
+              "name": "QuickLate-1.3.0.zip",
+              "browser_download_url": "https://github.com/ddotz/quicklate/releases/download/v1.3.0/QuickLate-1.3.0.zip",
+              "size": 3181255
+            }
+          ]
+        }
+        """#.data(using: .utf8)!
+
+        let release = try JSONDecoder().decode(GitHubReleaseInfo.self, from: json)
+
+        #expect(release.primaryUpdatePackageURL?.absoluteString == "https://github.com/ddotz/quicklate/releases/download/v1.3.0/QuickLate-1.3.0.zip")
+    }
 }

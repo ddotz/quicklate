@@ -321,11 +321,12 @@ struct SettingsView: View {
                     isDisabled: session.updateCheckState.isChecking
                 )
 
-                if session.updateCheckState.releaseURL != nil {
+                if canProceedUpdate {
                     SettingsActionButton(
-                        title: AppText.openUpdatePage,
-                        systemImage: "arrow.up.right.square",
-                        action: { session.openUpdatePage() }
+                        title: proceedUpdateButtonTitle,
+                        systemImage: proceedUpdateButtonImage,
+                        action: { session.proceedUpdate() },
+                        isDisabled: session.updateCheckState.isChecking
                     )
                 }
             }
@@ -346,8 +347,12 @@ struct SettingsView: View {
             AppText.updateCheckIdle
         case .checking:
             AppText.checkingForUpdates
-        case let .updateAvailable(latestVersion, _):
+        case let .updateAvailable(latestVersion, _, _):
             AppText.updateAvailable(latestVersion: latestVersion)
+        case let .downloading(latestVersion):
+            "\(AppText.downloadingUpdate) \(latestVersion)"
+        case let .downloaded(latestVersion, _):
+            AppText.updateDownloaded(latestVersion: latestVersion)
         case .upToDate:
             AppText.updateCheckUpToDate
         case let .failed(message):
@@ -359,10 +364,12 @@ struct SettingsView: View {
         switch session.updateCheckState {
         case .idle:
             "arrow.triangle.2.circlepath"
-        case .checking:
+        case .checking, .downloading:
             "hourglass"
         case .updateAvailable:
             "arrow.down.circle.fill"
+        case .downloaded:
+            "checkmark.circle.fill"
         case .upToDate:
             "checkmark.seal.fill"
         case .failed:
@@ -374,12 +381,38 @@ struct SettingsView: View {
         switch session.updateCheckState {
         case .updateAvailable:
             QuickLatePalette.primary
-        case .upToDate:
+        case .downloaded, .upToDate:
             QuickLatePalette.success
         case .failed:
             QuickLatePalette.critical
-        case .idle, .checking:
+        case .idle, .checking, .downloading:
             QuickLatePalette.slate
+        }
+    }
+
+    private var canProceedUpdate: Bool {
+        session.updateCheckState.releaseURL != nil || session.updateCheckState.downloadedFileURL != nil
+    }
+
+    private var proceedUpdateButtonTitle: String {
+        switch session.updateCheckState {
+        case .downloaded:
+            AppText.openDownloadedUpdate
+        case .downloading:
+            AppText.downloadingUpdate
+        default:
+            AppText.proceedUpdate
+        }
+    }
+
+    private var proceedUpdateButtonImage: String {
+        switch session.updateCheckState {
+        case .downloaded:
+            "folder"
+        case .downloading:
+            "hourglass"
+        default:
+            "arrow.down.circle"
         }
     }
 

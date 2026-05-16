@@ -276,9 +276,14 @@ enum AppText {
     static let versionInfo = localized(english: "Version", korean: "버전")
     static let checkForUpdates = localized(english: "Check for Updates", korean: "업데이트 확인")
     static let checkingForUpdates = localized(english: "Checking for updates...", korean: "업데이트를 확인하는 중...")
-    static let openUpdatePage = localized(english: "Open Update", korean: "업데이트 열기")
+    static let proceedUpdate = localized(english: "Update Now", korean: "업데이트 진행")
+    static let downloadingUpdate = localized(english: "Downloading update...", korean: "업데이트를 다운로드하는 중...")
+    static let openDownloadedUpdate = localized(english: "Open Downloaded Update", korean: "다운로드한 업데이트 열기")
     static let updateCheckIdle = localized(english: "Check GitHub releases for a newer version.", korean: "GitHub 릴리스에서 새 버전을 확인합니다.")
     static let updateCheckUpToDate = localized(english: "You're on the latest version.", korean: "최신 버전을 사용 중입니다.")
+    static let updatePackageUnavailable = localized(english: "No downloadable update package was attached. Opening the release page.", korean: "첨부된 업데이트 패키지가 없어 릴리스 페이지를 엽니다.")
+    static let updateDownloadInvalidResponse = localized(english: "GitHub returned an invalid update download response.", korean: "GitHub 업데이트 다운로드 응답이 올바르지 않습니다.")
+    static let updateDownloadFolderUnavailable = localized(english: "Could not find the Downloads folder.", korean: "다운로드 폴더를 찾지 못했습니다.")
     static let updateCheckInvalidResponse = localized(english: "GitHub returned an invalid update response.", korean: "GitHub 업데이트 응답이 올바르지 않습니다.")
     static let updateCheckInvalidCurrentVersion = localized(english: "The current app version is invalid.", korean: "현재 앱 버전이 올바르지 않습니다.")
     static let updateCheckInvalidReleaseVersion = localized(english: "The GitHub release version is invalid.", korean: "GitHub 릴리스 버전이 올바르지 않습니다.")
@@ -459,6 +464,27 @@ enum AppText {
         localized(
             english: "Update check failed: \(message)",
             korean: "업데이트 확인 실패: \(message)"
+        )
+    }
+
+    static func updateDownloaded(latestVersion: String) -> String {
+        localized(
+            english: "QuickLate \(latestVersion) was downloaded to Downloads.",
+            korean: "QuickLate \(latestVersion) 업데이트 파일을 다운로드 폴더에 받았습니다."
+        )
+    }
+
+    static func updateDownloadFailed(_ message: String) -> String {
+        localized(
+            english: "Update download failed: \(message)",
+            korean: "업데이트 다운로드 실패: \(message)"
+        )
+    }
+
+    static func updateDownloadHTTPFailed(statusCode: Int) -> String {
+        localized(
+            english: "GitHub update download failed with HTTP \(statusCode).",
+            korean: "GitHub 업데이트 다운로드가 HTTP \(statusCode)로 실패했습니다."
         )
     }
 
