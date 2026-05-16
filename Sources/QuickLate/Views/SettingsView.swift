@@ -5,6 +5,11 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var session: TranslationSessionStore
     @State private var openAIAPIKey = ""
+    @State private var glossaryEditingID: UUID?
+    @State private var glossarySourceTerm = ""
+    @State private var glossaryTargetTerm = ""
+    @State private var glossaryNote = ""
+    @State private var glossaryHardRule = false
 
     var body: some View {
         ScrollView {
@@ -13,6 +18,10 @@ struct SettingsView: View {
 
                 SettingsCard(title: AppText.processingSettings, systemImage: "slider.horizontal.3") {
                     processingSection
+                }
+
+                SettingsCard(title: AppText.translationQualitySettings, systemImage: "text.bubble") {
+                    translationQualitySection
                 }
 
                 SettingsLanguageSection(session: session)
@@ -94,6 +103,144 @@ struct SettingsView: View {
                 )
             }
         }
+    }
+
+    private var translationQualitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsToggleRow(
+                title: AppText.translationRefinement,
+                subtitle: AppText.translationRefinementDescription,
+                systemImage: "sparkles",
+                isOn: $session.isTranslationRefinementEnabled,
+                isDisabled: session.isRunning
+            )
+
+            HStack(spacing: 10) {
+                SettingsMenuSelector(
+                    title: AppText.translationRefinementProvider,
+                    systemImage: "cpu",
+                    options: TranslationRefinementProviderID.allCases,
+                    selection: $session.translationRefinementProviderID,
+                    titleForOption: { $0.title },
+                    isDisabled: session.isRunning || !session.isTranslationRefinementEnabled
+                )
+
+                SettingsMenuSelector(
+                    title: AppText.translationRefinementAggressiveness,
+                    systemImage: "dial.medium",
+                    options: TranslationRefinementAggressiveness.allCases,
+                    selection: $session.translationRefinementAggressiveness,
+                    titleForOption: { $0.title },
+                    isDisabled: session.isRunning || !session.isTranslationRefinementEnabled
+                )
+            }
+
+            SettingsToggleRow(
+                title: AppText.glossaryEnabled,
+                subtitle: nil,
+                systemImage: "book.closed",
+                isOn: $session.isGlossaryEnabled,
+                isDisabled: session.isRunning
+            )
+
+            glossaryEditor
+        }
+    }
+
+    private var glossaryEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(AppText.glossary)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(QuickLatePalette.inkDeep)
+
+            HStack(spacing: 8) {
+                TextField(AppText.glossarySourceTerm, text: $glossarySourceTerm)
+                    .textFieldStyle(.plain)
+                    .modifier(SettingsTextFieldSurface())
+                TextField(AppText.glossaryTargetTerm, text: $glossaryTargetTerm)
+                    .textFieldStyle(.plain)
+                    .modifier(SettingsTextFieldSurface())
+            }
+
+            HStack(spacing: 8) {
+                TextField(AppText.glossaryNote, text: $glossaryNote)
+                    .textFieldStyle(.plain)
+                    .modifier(SettingsTextFieldSurface())
+
+                SettingsToggleRow(
+                    title: AppText.glossaryHardRule,
+                    subtitle: nil,
+                    systemImage: "pin",
+                    isOn: $glossaryHardRule
+                )
+                .frame(width: 136)
+
+                SettingsActionButton(
+                    title: AppText.glossaryAddOrUpdate,
+                    systemImage: "checkmark",
+                    action: {
+                        session.saveGlossaryEntry(
+                            id: glossaryEditingID,
+                            sourceTerm: glossarySourceTerm,
+                            targetTerm: glossaryTargetTerm,
+                            note: glossaryNote,
+                            isHardRule: glossaryHardRule
+                        )
+                        resetGlossaryDraft()
+                    },
+                    isDisabled: glossarySourceTerm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || glossaryTargetTerm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            }
+
+            ForEach(session.glossaryEntries) { entry in
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(entry.sourceTerm) → \(entry.targetTerm)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(QuickLatePalette.inkDeep)
+                            .lineLimit(1)
+                        if let note = entry.note, !note.isEmpty {
+                            Text(note)
+                                .font(.caption2)
+                                .foregroundStyle(QuickLatePalette.slate)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if entry.isHardRule {
+                        Text(AppText.glossaryHardRule)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(QuickLatePalette.primary)
+                    }
+                    SettingsActionButton(
+                        title: AppText.glossaryEdit,
+                        systemImage: "pencil",
+                        action: {
+                            glossaryEditingID = entry.id
+                            glossarySourceTerm = entry.sourceTerm
+                            glossaryTargetTerm = entry.targetTerm
+                            glossaryNote = entry.note ?? ""
+                            glossaryHardRule = entry.isHardRule
+                        }
+                    )
+                    SettingsActionButton(
+                        title: AppText.glossaryDelete,
+                        systemImage: "trash",
+                        tint: QuickLatePalette.critical,
+                        action: { session.deleteGlossaryEntry(id: entry.id) }
+                    )
+                }
+            }
+        }
+    }
+
+    private func resetGlossaryDraft() {
+        glossaryEditingID = nil
+        glossarySourceTerm = ""
+        glossaryTargetTerm = ""
+        glossaryNote = ""
+        glossaryHardRule = false
     }
 
     private var modelAssetsSection: some View {
@@ -443,6 +590,32 @@ struct SettingsView: View {
         session.isUsingOpenAIRealtimeTranslation
             ? AppText.openAILanguageModeDescription
             : AppText.appleProcessingModeDescription
+    }
+}
+
+private extension TranslationRefinementProviderID {
+    var title: String {
+        switch self {
+        case .off:
+            AppText.translationRefinementOff
+        case .foundationModels:
+            AppText.translationRefinementFoundationModels
+        case .mlxLocalLLM:
+            AppText.translationRefinementMLX
+        }
+    }
+}
+
+private extension TranslationRefinementAggressiveness {
+    var title: String {
+        switch self {
+        case .conservative:
+            AppText.translationRefinementConservative
+        case .balanced:
+            AppText.translationRefinementBalanced
+        case .quality:
+            AppText.translationRefinementQuality
+        }
     }
 }
 

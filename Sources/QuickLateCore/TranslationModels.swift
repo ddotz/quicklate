@@ -41,6 +41,8 @@ public struct TranslationGlossaryEntry: Identifiable, Codable, Hashable, Sendabl
     public let id: UUID
     public var sourceTerm: String
     public var targetTerm: String
+    public var sourceLanguageID: String?
+    public var targetLanguageID: String?
     public var note: String?
     public var isHardRule: Bool
     public var createdAt: Date
@@ -50,6 +52,8 @@ public struct TranslationGlossaryEntry: Identifiable, Codable, Hashable, Sendabl
         id: UUID = UUID(),
         sourceTerm: String,
         targetTerm: String,
+        sourceLanguageID: String? = nil,
+        targetLanguageID: String? = nil,
         note: String? = nil,
         isHardRule: Bool,
         createdAt: Date = Date(),
@@ -58,6 +62,8 @@ public struct TranslationGlossaryEntry: Identifiable, Codable, Hashable, Sendabl
         self.id = id
         self.sourceTerm = sourceTerm
         self.targetTerm = targetTerm
+        self.sourceLanguageID = sourceLanguageID
+        self.targetLanguageID = targetLanguageID
         self.note = note
         self.isHardRule = isHardRule
         self.createdAt = createdAt

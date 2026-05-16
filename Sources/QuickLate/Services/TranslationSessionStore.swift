@@ -17,6 +17,11 @@ private enum SettingsKey {
     static let floatingCaptionTextSize = "floatingCaptionTextSize"
     static let floatingCaptionLineCount = "floatingCaptionLineCount"
     static let paragraphBreakSilenceInterval = "paragraphBreakSilenceInterval"
+    static let translationRefinementEnabled = "translationRefinementEnabled"
+    static let translationRefinementProviderID = "translationRefinementProviderID"
+    static let translationRefinementAggressiveness = "translationRefinementAggressiveness"
+    static let glossaryEnabled = "glossaryEnabled"
+    static let localLLMModelID = "localLLMModelID"
     static let savedTranscriptContentMode = "savedTranscriptContentMode"
     static let sessionDurationMode = "sessionDurationMode"
     static let showDockIcon = "showDockIcon"
@@ -132,6 +137,29 @@ final class TranslationSessionStore {
     var paragraphBreakSilenceInterval = 5.0 {
         didSet { persistSelectedSettings() }
     }
+    var isTranslationRefinementEnabled = false {
+        didSet {
+            persistSelectedSettings()
+            if !isTranslationRefinementEnabled {
+                cancelPendingRefinements()
+            }
+        }
+    }
+    var translationRefinementProviderID = TranslationRefinementProviderID.off {
+        didSet {
+            persistSelectedSettings()
+            cancelPendingRefinements()
+        }
+    }
+    var translationRefinementAggressiveness = TranslationRefinementAggressiveness.balanced {
+        didSet { persistSelectedSettings() }
+    }
+    var isGlossaryEnabled = true {
+        didSet { persistSelectedSettings() }
+    }
+    var localLLMModelID = "" {
+        didSet { persistSelectedSettings() }
+    }
     var savedTranscriptContentMode = SavedTranscriptContentMode.original {
         didSet { persistSelectedSettings() }
     }
@@ -154,6 +182,7 @@ final class TranslationSessionStore {
     var selectedSavedTranscriptID: String?
     var savedDraftSourceText = ""
     var savedDraftTranslationText = ""
+    var glossaryEntries: [TranslationGlossaryEntry] = []
     var updateCheckState = UpdateCheckState.idle
     var isFoundationTranscriptCleanupRunning = false
     private(set) var latestAudioLevel: Float?
@@ -177,6 +206,10 @@ final class TranslationSessionStore {
     private let openAIRealtimeAudioOutput = OpenAIRealtimeAudioOutput()
     private let assetDownloadCoordinator = AssetDownloadCoordinator()
     private let stableSegmentDetector = StableSegmentDetector()
+    private let contextualRefinementScheduler = ContextualRefinementScheduler()
+    private let foundationModelsTranslationRefiner = FoundationModelsTranslationRefiner()
+    private let mlxLocalLLMTranslationProvider = MLXLocalLLMTranslationProvider()
+    private let translationGlossaryStore = TranslationGlossaryStore(fileURL: TranslationSessionStore.glossaryFileURL())
     private let spellChecker = NSSpellChecker.shared
     private let spellDocumentTag = NSSpellChecker.uniqueSpellDocumentTag()
     private var audioSampleCount = 0
@@ -188,6 +221,7 @@ final class TranslationSessionStore {
     private var pendingCaptionPresentation: PendingCaptionPresentation?
     private var captionPresentationTask: Task<Void, Never>?
     private var stableSegmentDetectionTasksByLineID: [UUID: Task<Void, Never>] = [:]
+    private var contextualRefinementTasksByKey: [String: Task<Void, Never>] = [:]
     private var transcriptCleanupTask: Task<Void, Never>?
     private var translationTask: Task<Void, Never>?
     private var latestTranslationRequest: TranslationRequest?
@@ -261,6 +295,7 @@ final class TranslationSessionStore {
         transcriber.delegate = self
         openAITranscriber.delegate = self
         loadSavedTranscripts()
+        refreshGlossaryEntries()
         refreshModelAvailability()
     }
 
@@ -346,6 +381,63 @@ final class TranslationSessionStore {
         }
 
         NSWorkspace.shared.open(url)
+    }
+
+    func refreshGlossaryEntries() {
+        Task { @MainActor in
+            do {
+                glossaryEntries = try await translationGlossaryStore.entries()
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func saveGlossaryEntry(
+        id: UUID? = nil,
+        sourceTerm: String,
+        targetTerm: String,
+        note: String?,
+        isHardRule: Bool
+    ) {
+        let trimmedSource = sourceTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTarget = targetTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSource.isEmpty, !trimmedTarget.isEmpty else { return }
+
+        let now = Date()
+        let existing = id.flatMap { entryID in glossaryEntries.first(where: { $0.id == entryID }) }
+        let trimmedNote = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let entry = TranslationGlossaryEntry(
+            id: id ?? UUID(),
+            sourceTerm: trimmedSource,
+            targetTerm: trimmedTarget,
+            sourceLanguageID: sourceLanguage.id,
+            targetLanguageID: targetLanguage.id,
+            note: trimmedNote?.isEmpty == true ? nil : trimmedNote,
+            isHardRule: isHardRule,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now
+        )
+
+        Task { @MainActor in
+            do {
+                try await translationGlossaryStore.upsert(entry)
+                glossaryEntries = try await translationGlossaryStore.entries()
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func deleteGlossaryEntry(id: UUID) {
+        Task { @MainActor in
+            do {
+                try await translationGlossaryStore.delete(id: id)
+                glossaryEntries = try await translationGlossaryStore.entries()
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        }
     }
 
     var currentAppVersion: String {
@@ -977,6 +1069,7 @@ final class TranslationSessionStore {
         captionPresentationTask = nil
         stableSegmentDetectionTasksByLineID.values.forEach { $0.cancel() }
         stableSegmentDetectionTasksByLineID.removeAll()
+        cancelPendingRefinements()
         Task { await stableSegmentDetector.reset() }
         committedSourceText = ""
         currentPartialText = ""
@@ -1112,6 +1205,23 @@ final class TranslationSessionStore {
                 15
             )
         }
+        if defaults.object(forKey: SettingsKey.translationRefinementEnabled) != nil {
+            isTranslationRefinementEnabled = defaults.bool(forKey: SettingsKey.translationRefinementEnabled)
+        }
+        if let providerID = defaults.string(forKey: SettingsKey.translationRefinementProviderID),
+           let provider = TranslationRefinementProviderID(rawValue: providerID) {
+            translationRefinementProviderID = provider
+        }
+        if let aggressivenessID = defaults.string(forKey: SettingsKey.translationRefinementAggressiveness),
+           let aggressiveness = TranslationRefinementAggressiveness(rawValue: aggressivenessID) {
+            translationRefinementAggressiveness = aggressiveness
+        }
+        if defaults.object(forKey: SettingsKey.glossaryEnabled) != nil {
+            isGlossaryEnabled = defaults.bool(forKey: SettingsKey.glossaryEnabled)
+        }
+        if let modelID = defaults.string(forKey: SettingsKey.localLLMModelID) {
+            localLLMModelID = modelID
+        }
         if let contentModeID = defaults.string(forKey: SettingsKey.savedTranscriptContentMode),
            let contentMode = SavedTranscriptContentMode(rawValue: contentModeID) {
             savedTranscriptContentMode = contentMode
@@ -1140,6 +1250,11 @@ final class TranslationSessionStore {
         defaults.set(floatingCaptionTextSize.id, forKey: SettingsKey.floatingCaptionTextSize)
         defaults.set(floatingCaptionLineCount.id, forKey: SettingsKey.floatingCaptionLineCount)
         defaults.set(paragraphBreakSilenceInterval, forKey: SettingsKey.paragraphBreakSilenceInterval)
+        defaults.set(isTranslationRefinementEnabled, forKey: SettingsKey.translationRefinementEnabled)
+        defaults.set(translationRefinementProviderID.rawValue, forKey: SettingsKey.translationRefinementProviderID)
+        defaults.set(translationRefinementAggressiveness.rawValue, forKey: SettingsKey.translationRefinementAggressiveness)
+        defaults.set(isGlossaryEnabled, forKey: SettingsKey.glossaryEnabled)
+        defaults.set(localLLMModelID, forKey: SettingsKey.localLLMModelID)
         defaults.set(savedTranscriptContentMode.id, forKey: SettingsKey.savedTranscriptContentMode)
         defaults.set(sessionDurationMode.id, forKey: SettingsKey.sessionDurationMode)
         defaults.set(showDockIcon, forKey: SettingsKey.showDockIcon)
@@ -1345,13 +1460,20 @@ final class TranslationSessionStore {
         savedTranscripts.sort { $0.updatedAt > $1.updatedAt }
     }
 
-    private var transcriptsDirectoryURL: URL {
-        let supportDirectory = FileManager.default.urls(
+    private static func supportDirectoryURL() -> URL {
+        FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        return supportDirectory
-            .appendingPathComponent("QuickLate", isDirectory: true)
+        .appendingPathComponent("QuickLate", isDirectory: true)
+    }
+
+    private static func glossaryFileURL() -> URL {
+        supportDirectoryURL().appendingPathComponent("TranslationGlossary.json")
+    }
+
+    private var transcriptsDirectoryURL: URL {
+        Self.supportDirectoryURL()
             .appendingPathComponent("Transcripts", isDirectory: true)
     }
 
@@ -2620,7 +2742,10 @@ final class TranslationSessionStore {
         let lineID = line.id
         let sourceText = line.sourceText
         let revision = line.revision
-        let delayMilliseconds = Int(StableSegmentDetectorConfiguration().unchangedThreshold * 1_000)
+        let stableDelay = isTranslationRefinementEnabled
+            ? translationRefinementAggressiveness.policy.stableDelaySeconds
+            : StableSegmentDetectorConfiguration().unchangedThreshold
+        let delayMilliseconds = Int(stableDelay * 1_000)
 
         stableSegmentDetectionTasksByLineID[lineID] = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -2671,6 +2796,7 @@ final class TranslationSessionStore {
             )
         )
         applyStableCandidateMetadata(segment)
+        scheduleContextualRefinement(for: segment)
     }
 
     private func applyStableCandidateMetadata(_ segment: StableSourceSegment) {
@@ -2708,11 +2834,314 @@ final class TranslationSessionStore {
         )
     }
 
+    private func scheduleContextualRefinement(for segment: StableSourceSegment) {
+        guard isTranslationRefinementEnabled,
+              translationRefinementProviderID != .off,
+              sourceLanguage.id != targetLanguage.id,
+              let provider = selectedRefinementProvider()
+        else {
+            return
+        }
+
+        let key = refinementTaskKey(lineID: segment.lineID, revision: segment.revision)
+        contextualRefinementTasksByKey[key]?.cancel()
+        let sourceLanguageID = sourceLanguage.id
+        let targetLanguageID = targetLanguage.id
+        let policy = translationRefinementAggressiveness.policy
+        let request = refinementRequest(for: segment, sourceLanguageID: sourceLanguageID, targetLanguageID: targetLanguageID)
+
+        contextualRefinementTasksByKey[key] = Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard await contextualRefinementScheduler.enqueue(segment) != .duplicate else {
+                contextualRefinementTasksByKey[key] = nil
+                return
+            }
+
+            recordTranslationTrace(
+                RealtimeTranslationTraceEvent(
+                    kind: .refinementRequested,
+                    providerID: provider.id,
+                    lineID: segment.lineID,
+                    revision: segment.revision,
+                    sourceCharacterCount: segment.sourceText.count
+                )
+            )
+            applyRefiningMetadata(segment, providerID: provider.id)
+
+            do {
+                let response = try await withTimeout(seconds: policy.timeoutSeconds) {
+                    try await provider.translate(request)
+                }
+                try Task.checkCancellation()
+                applyRefinementResponse(response, segment: segment, request: request)
+            } catch is CancellationError {
+                return
+            } catch ContextualRefinementError.timeout {
+                recordRefinementFailure(
+                    kind: .refinementTimedOut,
+                    providerID: provider.id,
+                    segment: segment,
+                    reason: "timeout"
+                )
+            } catch {
+                recordRefinementFailure(
+                    kind: .providerUnavailable,
+                    providerID: provider.id,
+                    segment: segment,
+                    reason: error.localizedDescription
+                )
+            }
+
+            contextualRefinementTasksByKey[key] = nil
+        }
+    }
+
+    private func applyRefiningMetadata(_ segment: StableSourceSegment, providerID: String) {
+        guard let index = lines.firstIndex(where: { $0.id == segment.lineID }) else { return }
+        let currentLine = lines[index]
+        guard currentLine.sourceText == segment.sourceText else { return }
+        let currentMetadata = currentLine.translationMetadata
+        lines[index] = CaptionLine(
+            id: currentLine.id,
+            sourceText: currentLine.sourceText,
+            translatedText: currentLine.translatedText,
+            translatedSourceText: currentLine.translatedSourceText,
+            translationMetadata: TranslationMetadata(
+                phase: .refining,
+                provisionalText: currentMetadata.provisionalText ?? currentLine.translatedText,
+                refinedText: currentMetadata.refinedText,
+                translatedSourceRevision: segment.revision,
+                providerID: providerID,
+                refinedAt: currentMetadata.refinedAt,
+                failureReason: nil
+            ),
+            createdAt: currentLine.createdAt,
+            isFinal: currentLine.isFinal,
+            revision: currentLine.revision,
+            usesLongSessionDisplay: usesLongSessionMode
+        )
+    }
+
+    private func selectedRefinementProvider() -> (any TranslationProvider)? {
+        switch translationRefinementProviderID {
+        case .off:
+            nil
+        case .foundationModels:
+            foundationModelsTranslationRefiner
+        case .mlxLocalLLM:
+            mlxLocalLLMTranslationProvider
+        }
+    }
+
+    private func refinementRequest(
+        for segment: StableSourceSegment,
+        sourceLanguageID: String,
+        targetLanguageID: String
+    ) -> TranslationProviderRequest {
+        let contextWindow = TranslationContextBuilder().build(
+            previousUnits: translationUnitsForContext(before: segment.lineID),
+            currentSource: segment.sourceText,
+            glossaryEntries: glossaryEntriesForCurrentLanguagePair()
+        )
+        return TranslationProviderRequest(
+            sourceText: segment.sourceText,
+            sourceLanguageID: sourceLanguageID,
+            targetLanguageID: targetLanguageID,
+            previousSourceContext: contextWindow.previousSourceUnits.joined(separator: "\n"),
+            previousTargetContext: contextWindow.previousTargetUnits.joined(separator: "\n"),
+            glossary: contextWindow.glossaryEntries,
+            mode: .contextualRefinement
+        )
+    }
+
+    private func translationUnitsForContext(before lineID: UUID) -> [TranslationUnit] {
+        guard let lineIndex = lines.firstIndex(where: { $0.id == lineID }) else { return [] }
+        return lines[..<lineIndex].map { line in
+            TranslationUnit(
+                lineID: line.id,
+                sourceText: line.sourceText,
+                sourceRevision: line.translationMetadata.translatedSourceRevision,
+                sourceLanguageID: sourceLanguage.id,
+                targetLanguageID: targetLanguage.id,
+                provisionalTranslation: line.translationMetadata.provisionalText ?? (line.translatedText == AppText.translating ? nil : line.translatedText),
+                refinedTranslation: line.translationMetadata.refinedText,
+                phase: line.translationMetadata.phase,
+                createdAt: line.createdAt,
+                stableAt: nil,
+                refinedAt: line.translationMetadata.refinedAt
+            )
+        }
+    }
+
+    private func glossaryEntriesForCurrentLanguagePair() -> [TranslationGlossaryEntry] {
+        guard isGlossaryEnabled else { return [] }
+        return glossaryEntries.filter { entry in
+            let sourceMatches = entry.sourceLanguageID == nil || entry.sourceLanguageID == sourceLanguage.id
+            let targetMatches = entry.targetLanguageID == nil || entry.targetLanguageID == targetLanguage.id
+            return sourceMatches && targetMatches
+        }
+    }
+
+    private func applyRefinementResponse(
+        _ response: TranslationProviderResponse,
+        segment: StableSourceSegment,
+        request: TranslationProviderRequest
+    ) {
+        let validation = TranslationResultValidator.validate(
+            refinedText: response.translatedText,
+            sourceText: request.sourceText,
+            previousTargetContext: request.previousTargetContext,
+            targetLanguageID: request.targetLanguageID,
+            glossary: request.glossary
+        )
+        guard validation == .accepted else {
+            let reason: String
+            if case let .rejected(failureReason) = validation {
+                reason = failureReason.rawValue
+            } else {
+                reason = "unknown"
+            }
+            recordRefinementFailure(
+                kind: .refinementRejected,
+                providerID: response.providerID,
+                segment: segment,
+                reason: reason
+            )
+            return
+        }
+
+        guard let index = lines.firstIndex(where: { $0.id == segment.lineID }) else { return }
+        let currentLine = lines[index]
+        guard currentLine.sourceText == segment.sourceText else { return }
+
+        let organizedRefinement = organizeTranscript(response.translatedText, language: targetLanguage)
+        guard !organizedRefinement.isEmpty else {
+            recordRefinementFailure(
+                kind: .refinementRejected,
+                providerID: response.providerID,
+                segment: segment,
+                reason: TranslationValidationFailureReason.empty.rawValue
+            )
+            return
+        }
+        guard normalizedTranscriptForComparison(organizedRefinement) != normalizedTranscriptForComparison(currentLine.translatedText) else {
+            return
+        }
+
+        lines[index] = CaptionLine(
+            id: currentLine.id,
+            sourceText: currentLine.sourceText,
+            translatedText: organizedRefinement,
+            translatedSourceText: currentLine.sourceText,
+            translationMetadata: TranslationMetadata(
+                phase: .refined,
+                provisionalText: currentLine.translationMetadata.provisionalText ?? currentLine.translatedText,
+                refinedText: organizedRefinement,
+                translatedSourceRevision: segment.revision,
+                providerID: response.providerID,
+                refinedAt: Date(),
+                failureReason: nil
+            ),
+            createdAt: currentLine.createdAt,
+            isFinal: currentLine.isFinal,
+            revision: currentLine.revision + 1,
+            usesLongSessionDisplay: usesLongSessionMode
+        )
+        stageTranscriptForSave(currentLine.sourceText, translatedText: organizedRefinement)
+        updateFloatingTranslationPresentation(organizedRefinement, sourceText: currentLine.sourceText)
+        recordTranslationTrace(
+            RealtimeTranslationTraceEvent(
+                kind: .refinementAccepted,
+                providerID: response.providerID,
+                lineID: segment.lineID,
+                revision: segment.revision,
+                sourceCharacterCount: segment.sourceText.count,
+                latencyMilliseconds: response.latencyMilliseconds
+            )
+        )
+    }
+
+    private func recordRefinementFailure(
+        kind: RealtimeTranslationTraceKind,
+        providerID: String,
+        segment: StableSourceSegment,
+        reason: String
+    ) {
+        recordTranslationTrace(
+            RealtimeTranslationTraceEvent(
+                kind: kind,
+                providerID: providerID,
+                lineID: segment.lineID,
+                revision: segment.revision,
+                sourceCharacterCount: segment.sourceText.count,
+                failureReason: reason
+            )
+        )
+        guard let index = lines.firstIndex(where: { $0.id == segment.lineID }) else { return }
+        let currentLine = lines[index]
+        guard currentLine.sourceText == segment.sourceText else { return }
+        let currentMetadata = currentLine.translationMetadata
+        lines[index] = CaptionLine(
+            id: currentLine.id,
+            sourceText: currentLine.sourceText,
+            translatedText: currentLine.translatedText,
+            translatedSourceText: currentLine.translatedSourceText,
+            translationMetadata: TranslationMetadata(
+                phase: .failed,
+                provisionalText: currentMetadata.provisionalText ?? currentLine.translatedText,
+                refinedText: currentMetadata.refinedText,
+                translatedSourceRevision: segment.revision,
+                providerID: providerID,
+                refinedAt: currentMetadata.refinedAt,
+                failureReason: reason
+            ),
+            createdAt: currentLine.createdAt,
+            isFinal: currentLine.isFinal,
+            revision: currentLine.revision,
+            usesLongSessionDisplay: usesLongSessionMode
+        )
+    }
+
+    private func cancelPendingRefinements() {
+        contextualRefinementTasksByKey.values.forEach { $0.cancel() }
+        contextualRefinementTasksByKey.removeAll()
+        Task { await contextualRefinementScheduler.cancelAll() }
+    }
+
+    private func refinementTaskKey(lineID: UUID, revision: Int) -> String {
+        "\(lineID.uuidString):\(revision)"
+    }
+
+    private func withTimeout<T: Sendable>(
+        seconds: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(for: .milliseconds(Int(seconds * 1_000)))
+                throw ContextualRefinementError.timeout
+            }
+
+            guard let result = try await group.next() else {
+                throw ContextualRefinementError.timeout
+            }
+            group.cancelAll()
+            return result
+        }
+    }
+
     private func recordTranslationTrace(_ event: RealtimeTranslationTraceEvent) {
         realtimeTranslationTraceEvents.append(event)
         while realtimeTranslationTraceEvents.count > Self.maxRealtimeTranslationTraceEvents {
             realtimeTranslationTraceEvents.removeFirst()
         }
+    }
+
+    private enum ContextualRefinementError: Error {
+        case timeout
     }
 
     private func updateFloatingTranslationPresentation(_ translatedText: String, sourceText: String) {
