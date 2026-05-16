@@ -6,5 +6,5 @@ public enum AppIdentity {
     public static let githubRepository = "quicklate"
     public static let githubRepositoryURL = URL(string: "https://github.com/ddotz/quicklate")!
     public static let githubLatestReleaseAPIURL = URL(string: "https://api.github.com/repos/ddotz/quicklate/releases/latest")!
-    public static let githubVersionMetadataURL = URL(string: "https://raw.githubusercontent.com/ddotz/quicklate/main/script/app_metadata.sh")!
+    public static let githubVersionMetadataURL = URL(string: "https://api.github.com/repos/ddotz/quicklate/contents/script/app_metadata.sh?ref=main")!
 }
