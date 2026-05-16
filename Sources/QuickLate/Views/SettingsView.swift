@@ -37,7 +37,7 @@ struct SettingsView: View {
                     appAndPermissionsSection
                 }
 
-                SettingsCard(title: AppText.versionInfo, systemImage: "number") {
+                SettingsCard(title: AppText.versionInfo, systemImage: "info.circle") {
                     settingsVersionAndUpdatesSection
                 }
             }
@@ -302,36 +302,25 @@ struct SettingsView: View {
 
     private var settingsVersionAndUpdatesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Label("\(session.currentAppVersion) (\(session.currentAppBuild))", systemImage: "number")
-                    .font(.system(size: settingsVersionFooterFontSize, weight: .bold))
-                    .foregroundStyle(QuickLatePalette.inkDeep)
-                    .lineLimit(1)
+            SettingsInfoRow(
+                title: AppText.versionInfo,
+                systemImage: "info.circle",
+                value: "\(session.currentAppVersion) (\(session.currentAppBuild))",
+                valueColor: QuickLatePalette.inkDeep
+            )
 
-                Spacer(minLength: 8)
+            Divider()
 
-                SettingsActionButton(
-                    title: AppText.checkForUpdates,
-                    systemImage: "arrow.triangle.2.circlepath",
-                    action: {
-                        Task { @MainActor in
-                            await session.checkForUpdates()
-                        }
-                    },
-                    isDisabled: session.updateCheckState.isChecking
-                )
+            SettingsInfoRow(
+                title: AppText.updateInfo,
+                systemImage: settingsUpdateStatusImage,
+                value: settingsUpdateActionTitle,
+                valueColor: settingsUpdateActionColor,
+                action: performSettingsUpdateAction,
+                isDisabled: settingsUpdateActionDisabled
+            )
 
-                if canProceedUpdate {
-                    SettingsActionButton(
-                        title: proceedUpdateButtonTitle,
-                        systemImage: proceedUpdateButtonImage,
-                        action: { session.proceedUpdate() },
-                        isDisabled: session.updateCheckState.isChecking
-                    )
-                }
-            }
-
-            Label(settingsUpdateStatusText, systemImage: settingsUpdateStatusImage)
+            Text(settingsUpdateStatusText)
                 .font(.system(size: settingsVersionFooterFontSize, weight: .semibold))
                 .foregroundStyle(settingsUpdateStatusColor)
                 .fixedSize(horizontal: false, vertical: true)
@@ -388,27 +377,43 @@ struct SettingsView: View {
         }
     }
 
-    private var canProceedUpdate: Bool {
-        session.updateCheckState.releaseURL != nil
+    private var hasAvailableUpdate: Bool {
+        if case .updateAvailable = session.updateCheckState {
+            return true
+        }
+        return false
     }
 
-    private var proceedUpdateButtonTitle: String {
+    private var settingsUpdateActionTitle: String {
         switch session.updateCheckState {
+        case .updateAvailable:
+            AppText.proceedUpdate
+        case .checking:
+            AppText.checkingForUpdates
         case .downloading:
             AppText.downloadingUpdate
         case .installing:
             AppText.installingUpdate
-        default:
-            AppText.proceedUpdate
+        case .idle, .upToDate, .failed:
+            AppText.checkForUpdates
         }
     }
 
-    private var proceedUpdateButtonImage: String {
-        switch session.updateCheckState {
-        case .downloading, .installing:
-            "hourglass"
-        default:
-            "arrow.down.circle"
+    private var settingsUpdateActionDisabled: Bool {
+        session.updateCheckState.isChecking
+    }
+
+    private var settingsUpdateActionColor: Color {
+        settingsUpdateActionDisabled ? QuickLatePalette.steel : QuickLatePalette.primary
+    }
+
+    private func performSettingsUpdateAction() {
+        if hasAvailableUpdate {
+            session.proceedUpdate()
+        } else {
+            Task { @MainActor in
+                await session.checkForUpdates()
+            }
         }
     }
 
@@ -664,6 +669,45 @@ private struct SettingsActionButton: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.48 : 1)
+    }
+}
+
+private struct SettingsInfoRow: View {
+    let title: String
+    let systemImage: String
+    let value: String
+    var valueColor = QuickLatePalette.inkDeep
+    var action: (() -> Void)?
+    var isDisabled = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(QuickLatePalette.slate)
+                .lineLimit(1)
+
+            Spacer(minLength: 12)
+
+            if let action {
+                Button(action: action) {
+                    Text(value)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(isDisabled ? QuickLatePalette.steel : valueColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
+                .buttonStyle(.plain)
+                .disabled(isDisabled)
+                .accessibilityLabel(value)
+            } else {
+                Text(value)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(valueColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+            }
+        }
     }
 }
 

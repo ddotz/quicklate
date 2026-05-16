@@ -32,6 +32,19 @@ public enum WorkspaceStartActionPolicy {
         }
     }
 
+    public static func continuationRouteAfterAvailabilityRefresh(for state: AssetPreflightState) -> WorkspaceStartRoute? {
+        guard state.startIntent == .startAfterDownload else { return nil }
+
+        switch state.primaryAction {
+        case .start:
+            return .startCapture
+        case .downloadAndStart, .retryDownload:
+            return .downloadAssetsAndStart
+        case .wait, .openSystemSettings, .changeLanguagePair:
+            return nil
+        }
+    }
+
     public static func recoveryRoute(for failureKind: WorkspaceStartFailureKind) -> WorkspaceStartFailureRecoveryRoute {
         switch failureKind {
         case .permissionRequired:

@@ -34,4 +34,37 @@ struct WorkspaceStartActionPolicyTests {
         #expect(WorkspaceStartActionPolicy.route(for: .wait) == .wait)
         #expect(WorkspaceStartActionPolicy.route(for: .changeLanguagePair) == .changeLanguagePair)
     }
+
+    @Test
+    func pendingStartContinuesToDownloadWhenRefreshFindsMissingAssets() {
+        let state = AssetPreflightState(
+            speech: .installed,
+            translation: .downloadRequired,
+            startIntent: .startAfterDownload
+        )
+
+        #expect(WorkspaceStartActionPolicy.continuationRouteAfterAvailabilityRefresh(for: state) == .downloadAssetsAndStart)
+    }
+
+    @Test
+    func pendingStartContinuesToStartWhenRefreshFindsInstalledAssets() {
+        let state = AssetPreflightState(
+            speech: .installed,
+            translation: .installed,
+            startIntent: .startAfterDownload
+        )
+
+        #expect(WorkspaceStartActionPolicy.continuationRouteAfterAvailabilityRefresh(for: state) == .startCapture)
+    }
+
+    @Test
+    func availabilityRefreshDoesNotAutoContinueWithoutPendingStartIntent() {
+        let state = AssetPreflightState(
+            speech: .installed,
+            translation: .downloadRequired,
+            startIntent: .none
+        )
+
+        #expect(WorkspaceStartActionPolicy.continuationRouteAfterAvailabilityRefresh(for: state) == nil)
+    }
 }

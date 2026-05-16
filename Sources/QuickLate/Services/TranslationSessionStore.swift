@@ -593,9 +593,53 @@ final class TranslationSessionStore {
         case .changeLanguagePair:
             statusMessage = AppText.changeLanguagePair
         case .wait:
+            assetDownloadCoordinator.rememberStartAfterDownload()
             if applePreflightState.requiresAvailabilityRefresh {
                 refreshModelAvailability()
             }
+            statusMessage = AppText.checkingLanguagePacks
+        }
+    }
+
+    private func continuePendingStartAfterAvailabilityRefresh() {
+        let state = applePreflightState
+        guard state.startIntent == .startAfterDownload else { return }
+
+        let route = WorkspaceStartActionPolicy.route(for: state.primaryAction)
+        switch route {
+        case .startCapture, .downloadAssetsAndStart:
+            break
+        case .openSystemSettings:
+            assetDownloadCoordinator.clearStartIntent()
+            statusMessage = AppText.permissionsHelp
+            return
+        case .changeLanguagePair:
+            assetDownloadCoordinator.clearStartIntent()
+            statusMessage = AppText.changeLanguagePair
+            return
+        case .wait:
+            return
+        }
+
+        E2ERuntimeReporter.report(
+            "workspaceStartContinuationAfterAvailabilityRefresh",
+            fields: ["route": route.rawValue]
+        )
+
+        switch route {
+        case .startCapture:
+            assetDownloadCoordinator.clearStartIntent()
+            start()
+        case .downloadAssetsAndStart:
+            downloadModelAssets(for: .appleSystem)
+        case .openSystemSettings:
+            assetDownloadCoordinator.clearStartIntent()
+            statusMessage = AppText.permissionsHelp
+            openPrivacySettings()
+        case .changeLanguagePair:
+            assetDownloadCoordinator.clearStartIntent()
+            statusMessage = AppText.changeLanguagePair
+        case .wait:
             statusMessage = AppText.checkingLanguagePacks
         }
     }
@@ -1004,6 +1048,7 @@ final class TranslationSessionStore {
 
             await MainActor.run {
                 self?.modelAvailabilityByModelID = availabilityByModelID
+                self?.continuePendingStartAfterAvailabilityRefresh()
             }
         }
     }

@@ -274,6 +274,7 @@ enum AppText {
     static let homeOpen = localized(english: "Open Home", korean: "홈열기")
     static let appInfo = localized(english: "App Info", korean: "앱 정보")
     static let versionInfo = localized(english: "Version", korean: "버전")
+    static let updateInfo = localized(english: "Update", korean: "업데이트")
     static let checkForUpdates = localized(english: "Check for Updates", korean: "업데이트 확인")
     static let checkingForUpdates = localized(english: "Checking for updates...", korean: "업데이트를 확인하는 중...")
     static let proceedUpdate = localized(english: "Update Now", korean: "업데이트 진행")

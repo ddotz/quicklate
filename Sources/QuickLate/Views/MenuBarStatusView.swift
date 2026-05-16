@@ -276,7 +276,7 @@ private struct MenuBarAppVersionInfo: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
-                Label(AppText.versionInfo, systemImage: "number")
+                Label(AppText.versionInfo, systemImage: "info.circle")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(QuickLatePalette.slate)
                 Spacer(minLength: 0)
@@ -322,32 +322,26 @@ private struct MenuBarAppVersionInfo: View {
 
     private var updateSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label(updateStatusText, systemImage: updateStatusImage)
+            HStack(spacing: 8) {
+                Label(AppText.updateInfo, systemImage: updateStatusImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(QuickLatePalette.slate)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                MenuBarInlineTextAction(
+                    title: updateActionTitle,
+                    tint: updateActionColor,
+                    isDisabled: updateActionDisabled,
+                    action: performUpdateAction
+                )
+            }
+
+            Text(updateStatusText)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(updateStatusColor)
                 .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 7) {
-                MenuBarUpdateButton(
-                    title: AppText.checkForUpdates,
-                    systemImage: "arrow.triangle.2.circlepath",
-                    isDisabled: session.updateCheckState.isChecking
-                ) {
-                    Task { @MainActor in
-                        await session.checkForUpdates()
-                    }
-                }
-
-                if canProceedUpdate {
-                    MenuBarUpdateButton(
-                        title: proceedUpdateButtonTitle,
-                        systemImage: proceedUpdateButtonImage,
-                        isDisabled: session.updateCheckState.isChecking
-                    ) {
-                        session.proceedUpdate()
-                    }
-                }
-            }
         }
     }
 
@@ -398,27 +392,43 @@ private struct MenuBarAppVersionInfo: View {
         }
     }
 
-    private var canProceedUpdate: Bool {
-        session.updateCheckState.releaseURL != nil
+    private var hasAvailableUpdate: Bool {
+        if case .updateAvailable = session.updateCheckState {
+            return true
+        }
+        return false
     }
 
-    private var proceedUpdateButtonTitle: String {
+    private var updateActionTitle: String {
         switch session.updateCheckState {
+        case .updateAvailable:
+            AppText.proceedUpdate
+        case .checking:
+            AppText.checkingForUpdates
         case .downloading:
             AppText.downloadingUpdate
         case .installing:
             AppText.installingUpdate
-        default:
-            AppText.proceedUpdate
+        case .idle, .upToDate, .failed:
+            AppText.checkForUpdates
         }
     }
 
-    private var proceedUpdateButtonImage: String {
-        switch session.updateCheckState {
-        case .downloading, .installing:
-            "hourglass"
-        default:
-            "arrow.down.circle"
+    private var updateActionDisabled: Bool {
+        session.updateCheckState.isChecking
+    }
+
+    private var updateActionColor: Color {
+        updateActionDisabled ? QuickLatePalette.steel : QuickLatePalette.primary
+    }
+
+    private func performUpdateAction() {
+        if hasAvailableUpdate {
+            session.proceedUpdate()
+        } else {
+            Task { @MainActor in
+                await session.checkForUpdates()
+            }
         }
     }
 
@@ -427,30 +437,19 @@ private struct MenuBarAppVersionInfo: View {
     }
 }
 
-private struct MenuBarUpdateButton: View {
+private struct MenuBarInlineTextAction: View {
     let title: String
-    let systemImage: String
+    let tint: Color
     var isDisabled = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: systemImage)
-                    .font(.system(size: buttonFontSize, weight: .bold))
-                Text(title)
-                    .font(.system(size: buttonFontSize, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-            .foregroundStyle(isDisabled ? QuickLatePalette.steel : QuickLatePalette.primary)
-            .padding(.horizontal, 8)
-            .frame(height: 24)
-            .background((isDisabled ? QuickLatePalette.steel : QuickLatePalette.primary).opacity(0.10), in: Capsule())
-            .overlay {
-                Capsule().strokeBorder((isDisabled ? QuickLatePalette.steel : QuickLatePalette.primary).opacity(0.18), lineWidth: 1)
-            }
-            .contentShape(Capsule())
+            Text(title)
+                .font(.system(size: buttonFontSize, weight: .bold))
+                .foregroundStyle(isDisabled ? QuickLatePalette.steel : tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
