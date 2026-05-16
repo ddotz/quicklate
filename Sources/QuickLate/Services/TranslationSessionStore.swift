@@ -27,6 +27,8 @@ private struct TranslationRequest {
     let sourceText: String
     let source: LanguageOption
     let target: LanguageOption
+    let providerID: String
+    let requestedAt: Date
 }
 
 private struct PendingCaptionPresentation {
@@ -49,6 +51,7 @@ final class TranslationSessionStore {
     private static let floatingCaptionImmediateExtensionCharacterLimit = 28
     private static let minimumFloatingCaptionDwell = RealtimeLatencyPolicy.minimumFloatingCaptionDwellSeconds
     private static let maximumFloatingCaptionDwell = RealtimeLatencyPolicy.maximumFloatingCaptionDwellSeconds
+    private static let maxRealtimeTranslationTraceEvents = 1_000
 
     var isRunning = false
     var isPaused = false
@@ -154,6 +157,7 @@ final class TranslationSessionStore {
     var updateCheckState = UpdateCheckState.idle
     var isFoundationTranscriptCleanupRunning = false
     private(set) var latestAudioLevel: Float?
+    private(set) var realtimeTranslationTraceEvents: [RealtimeTranslationTraceEvent] = []
     var modelAvailabilityByModelID = Dictionary(
         uniqueKeysWithValues: IntelligenceModel.allCases.map {
             ($0.id, ModelAvailability.checking(for: $0))
@@ -172,6 +176,7 @@ final class TranslationSessionStore {
     private let speechOutput = TranslatedSpeechOutput()
     private let openAIRealtimeAudioOutput = OpenAIRealtimeAudioOutput()
     private let assetDownloadCoordinator = AssetDownloadCoordinator()
+    private let stableSegmentDetector = StableSegmentDetector()
     private let spellChecker = NSSpellChecker.shared
     private let spellDocumentTag = NSSpellChecker.uniqueSpellDocumentTag()
     private var audioSampleCount = 0
@@ -182,6 +187,7 @@ final class TranslationSessionStore {
     private var lastCaptionPresentationUpdateAt = Date.distantPast
     private var pendingCaptionPresentation: PendingCaptionPresentation?
     private var captionPresentationTask: Task<Void, Never>?
+    private var stableSegmentDetectionTasksByLineID: [UUID: Task<Void, Never>] = [:]
     private var transcriptCleanupTask: Task<Void, Never>?
     private var translationTask: Task<Void, Never>?
     private var latestTranslationRequest: TranslationRequest?
@@ -969,6 +975,9 @@ final class TranslationSessionStore {
         pendingCaptionPresentation = nil
         captionPresentationTask?.cancel()
         captionPresentationTask = nil
+        stableSegmentDetectionTasksByLineID.values.forEach { $0.cancel() }
+        stableSegmentDetectionTasksByLineID.removeAll()
+        Task { await stableSegmentDetector.reset() }
         committedSourceText = ""
         currentPartialText = ""
         pendingParagraphBreakBeforePartial = false
@@ -1489,6 +1498,7 @@ final class TranslationSessionStore {
             lastCaptionPresentationUpdateAt = Date()
             stageTranscriptForSave(line.sourceText)
             requestTranslation(for: line, source: direction.source, target: direction.target)
+            scheduleStableSegmentDetection(for: line)
         }
     }
 
@@ -1577,6 +1587,7 @@ final class TranslationSessionStore {
         lastCaptionPresentationUpdateAt = Date()
         stageTranscriptForSave(line.sourceText)
         requestTranslation(for: line, source: source, target: target)
+        scheduleStableSegmentDetection(for: line)
     }
 
     private func accumulatedTranscript(incoming: String, hadLongSilence: Bool) -> String {
@@ -2414,15 +2425,28 @@ final class TranslationSessionStore {
 
         let sourceText = line.sourceText
         guard pendingTranslationSourceText != sourceText else { return }
+        let requestedAt = Date()
+        let providerID = provisionalTranslationProviderID()
         pendingTranslationSourceText = sourceText
         if latestTranslationRequest == nil {
-            translationBurstStartedAt = Date()
+            translationBurstStartedAt = requestedAt
         }
+        recordTranslationTrace(
+            RealtimeTranslationTraceEvent(
+                kind: .provisionalTranslationRequested,
+                providerID: providerID,
+                lineID: line.id,
+                revision: line.revision,
+                sourceCharacterCount: sourceText.count
+            )
+        )
         latestTranslationRequest = TranslationRequest(
             line: line,
             sourceText: sourceText,
             source: source,
-            target: target
+            target: target,
+            providerID: providerID,
+            requestedAt: requestedAt
         )
 
         guard translationTask == nil else {
@@ -2455,7 +2479,13 @@ final class TranslationSessionStore {
                     target: request.target
                 )
                 try Task.checkCancellation()
-                updateTranslation(translatedText, for: request.line, matching: request.sourceText)
+                updateTranslation(
+                    translatedText,
+                    for: request.line,
+                    matching: request.sourceText,
+                    providerID: request.providerID,
+                    requestedAt: request.requestedAt
+                )
             } catch is CancellationError {
                 translationTask = nil
                 return
@@ -2490,7 +2520,13 @@ final class TranslationSessionStore {
             : RealtimeLatencyPolicy.initialTranslationBurstDebounceMilliseconds
     }
 
-    private func updateTranslation(_ translatedText: String, for line: CaptionLine, matching sourceText: String) {
+    private func updateTranslation(
+        _ translatedText: String,
+        for line: CaptionLine,
+        matching sourceText: String,
+        providerID: String,
+        requestedAt: Date
+    ) {
         guard let index = lines.firstIndex(where: { $0.id == line.id }) else { return }
         guard lines[index].sourceText == sourceText else {
             if pendingTranslationSourceText == sourceText {
@@ -2505,15 +2541,32 @@ final class TranslationSessionStore {
         }
         stageTranscriptForSave(sourceText, translatedText: organizedTranslatedText)
 
-        lines[index] = CaptionLine(
+        let updatedLine = CaptionLine(
             id: line.id,
             sourceText: sourceText,
             translatedText: organizedTranslatedText,
             translatedSourceText: sourceText,
+            translationMetadata: TranslationMetadata(
+                phase: .provisional,
+                provisionalText: organizedTranslatedText,
+                translatedSourceRevision: line.revision,
+                providerID: providerID
+            ),
             createdAt: line.createdAt,
             isFinal: line.isFinal,
             revision: lines[index].revision + 1,
             usesLongSessionDisplay: usesLongSessionMode
+        )
+        lines[index] = updatedLine
+        recordTranslationTrace(
+            RealtimeTranslationTraceEvent(
+                kind: .provisionalTranslationApplied,
+                providerID: providerID,
+                lineID: line.id,
+                revision: line.revision,
+                sourceCharacterCount: sourceText.count,
+                latencyMilliseconds: Int(Date().timeIntervalSince(requestedAt) * 1_000)
+            )
         )
 
         updateFloatingTranslationPresentation(floatingTranslatedText, sourceText: sourceText)
@@ -2539,6 +2592,12 @@ final class TranslationSessionStore {
             sourceText: sourceText,
             translatedText: message,
             translatedSourceText: sourceText,
+            translationMetadata: TranslationMetadata(
+                phase: .failed,
+                translatedSourceRevision: line.revision,
+                providerID: provisionalTranslationProviderID(),
+                failureReason: message
+            ),
             createdAt: line.createdAt,
             isFinal: line.isFinal,
             revision: lines[index].revision + 1,
@@ -2546,6 +2605,114 @@ final class TranslationSessionStore {
         )
         updateFloatingTranslationPresentation(message, sourceText: sourceText)
         statusMessage = message
+    }
+
+    private func provisionalTranslationProviderID() -> String {
+        if openAITranslationModel.isEnabled && !openAITranslationModel.usesRealtimeAudioTranslation {
+            return "openai-translation"
+        }
+
+        return "apple-fast-translation"
+    }
+
+    private func scheduleStableSegmentDetection(for line: CaptionLine) {
+        stableSegmentDetectionTasksByLineID[line.id]?.cancel()
+        let lineID = line.id
+        let sourceText = line.sourceText
+        let revision = line.revision
+        let delayMilliseconds = Int(StableSegmentDetectorConfiguration().unchangedThreshold * 1_000)
+
+        stableSegmentDetectionTasksByLineID[lineID] = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let firstDecision = await stableSegmentDetector.ingest(
+                sourceText: sourceText,
+                lineID: lineID,
+                revision: revision,
+                timestamp: Date()
+            )
+            recordStableSegmentDecision(firstDecision)
+            guard firstDecision == .none else {
+                stableSegmentDetectionTasksByLineID[lineID] = nil
+                return
+            }
+
+            try? await Task.sleep(for: .milliseconds(delayMilliseconds))
+            guard !Task.isCancelled else { return }
+
+            let delayedDecision = await stableSegmentDetector.ingest(
+                sourceText: sourceText,
+                lineID: lineID,
+                revision: revision,
+                timestamp: Date()
+            )
+            recordStableSegmentDecision(delayedDecision)
+            stableSegmentDetectionTasksByLineID[lineID] = nil
+        }
+    }
+
+    private func recordStableSegmentDecision(_ decision: StableSegmentDecision) {
+        let segment: StableSourceSegment
+        switch decision {
+        case .none:
+            return
+        case let .candidate(candidate):
+            segment = candidate
+        case let .committed(committed):
+            segment = committed
+        }
+
+        recordTranslationTrace(
+            RealtimeTranslationTraceEvent(
+                kind: .stableSegmentDetected,
+                providerID: nil,
+                lineID: segment.lineID,
+                revision: segment.revision,
+                sourceCharacterCount: segment.sourceText.count
+            )
+        )
+        applyStableCandidateMetadata(segment)
+    }
+
+    private func applyStableCandidateMetadata(_ segment: StableSourceSegment) {
+        guard let index = lines.firstIndex(where: { $0.id == segment.lineID }) else { return }
+        let currentLine = lines[index]
+        guard currentLine.sourceText == segment.sourceText else { return }
+        let currentMetadata = currentLine.translationMetadata
+        guard currentMetadata.phase != .refined,
+              currentMetadata.phase != .failed
+        else {
+            return
+        }
+
+        let provisionalText = currentMetadata.provisionalText ?? (
+            currentLine.translatedText == AppText.translating ? nil : currentLine.translatedText
+        )
+        lines[index] = CaptionLine(
+            id: currentLine.id,
+            sourceText: currentLine.sourceText,
+            translatedText: currentLine.translatedText,
+            translatedSourceText: currentLine.translatedSourceText,
+            translationMetadata: TranslationMetadata(
+                phase: .stableCandidate,
+                provisionalText: provisionalText,
+                refinedText: currentMetadata.refinedText,
+                translatedSourceRevision: segment.revision,
+                providerID: currentMetadata.providerID,
+                refinedAt: currentMetadata.refinedAt,
+                failureReason: currentMetadata.failureReason
+            ),
+            createdAt: currentLine.createdAt,
+            isFinal: currentLine.isFinal,
+            revision: currentLine.revision,
+            usesLongSessionDisplay: usesLongSessionMode
+        )
+    }
+
+    private func recordTranslationTrace(_ event: RealtimeTranslationTraceEvent) {
+        realtimeTranslationTraceEvents.append(event)
+        while realtimeTranslationTraceEvents.count > Self.maxRealtimeTranslationTraceEvents {
+            realtimeTranslationTraceEvents.removeFirst()
+        }
     }
 
     private func updateFloatingTranslationPresentation(_ translatedText: String, sourceText: String) {

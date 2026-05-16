@@ -10,6 +10,7 @@ struct CaptionLine: Identifiable, Equatable {
     let translatedText: String
     let translatedDisplayText: String
     let translatedSourceText: String
+    let translationMetadata: TranslationMetadata
     let createdAt: Date
     let isFinal: Bool
     let revision: Int
@@ -19,6 +20,7 @@ struct CaptionLine: Identifiable, Equatable {
         sourceText: String,
         translatedText: String,
         translatedSourceText: String = "",
+        translationMetadata: TranslationMetadata = .init(),
         createdAt: Date,
         isFinal: Bool,
         revision: Int = 0,
@@ -30,6 +32,7 @@ struct CaptionLine: Identifiable, Equatable {
         self.translatedText = translatedText
         self.translatedDisplayText = Self.displayText(for: translatedText, usesLongSessionDisplay: usesLongSessionDisplay)
         self.translatedSourceText = translatedSourceText
+        self.translationMetadata = translationMetadata
         self.createdAt = createdAt
         self.isFinal = isFinal
         self.revision = revision
