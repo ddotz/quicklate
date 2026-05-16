@@ -64,28 +64,30 @@ struct SettingsView: View {
     }
 
     private var processingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker(AppText.model, selection: processingEngineBinding) {
-                ForEach(SettingsProcessingEngine.allCases) { engine in
-                    Text(engine.title).tag(engine)
-                }
-            }
-            .pickerStyle(.segmented)
-            .disabled(session.isRunning)
+        VStack(alignment: .leading, spacing: 10) {
+            SettingsSegmentedControl(
+                title: AppText.model,
+                options: SettingsProcessingEngine.allCases,
+                selection: processingEngineBinding,
+                titleForOption: { $0.title },
+                isDisabled: session.isRunning
+            )
 
             Text(processingDescription)
                 .font(.caption)
                 .foregroundStyle(QuickLatePalette.slate)
-                .lineLimit(3)
+                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Toggle(AppText.translatedVoiceOutput, isOn: $session.isDubbingEnabled)
-                .disabled(session.isRunning)
-
-            Text(AppText.translatedVoiceOutputDescription)
-                .font(.caption)
-                .foregroundStyle(QuickLatePalette.slate)
-                .lineLimit(2)
+            if session.isUsingOpenAIRealtimeTranslation {
+                SettingsToggleRow(
+                    title: AppText.translatedVoiceOutput,
+                    subtitle: AppText.translatedVoiceOutputDescription,
+                    systemImage: "speaker.wave.2.fill",
+                    isOn: $session.isDubbingEnabled,
+                    isDisabled: session.isRunning
+                )
+            }
         }
     }
 
@@ -114,18 +116,6 @@ struct SettingsView: View {
                 session.downloadModelAssets(for: .appleOnDevice)
             }
 
-            HStack {
-                Text(AppText.languagePackNeeded)
-                    .font(.caption)
-                    .foregroundStyle(QuickLatePalette.slate)
-                Spacer()
-                Button {
-                    session.refreshModelAvailability()
-                } label: {
-                    Label(AppText.modelStatusChecking, systemImage: "arrow.clockwise")
-                }
-                .controlSize(.small)
-            }
         }
     }
 
@@ -133,19 +123,29 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 SecureField(AppText.openAIAPIKeyPlaceholder, text: $openAIAPIKey)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
+                    .modifier(SettingsTextFieldSurface())
 
-                Button(AppText.saveOpenAIAPIKey) {
-                    session.saveOpenAIAPIKey(openAIAPIKey)
-                    openAIAPIKey = ""
-                }
-                .disabled(openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                SettingsActionButton(
+                    title: AppText.saveOpenAIAPIKey,
+                    systemImage: "checkmark",
+                    action: {
+                        session.saveOpenAIAPIKey(openAIAPIKey)
+                        openAIAPIKey = ""
+                    },
+                    isDisabled: openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
 
-                Button(AppText.removeOpenAIAPIKey) {
-                    session.removeOpenAIAPIKey()
-                    openAIAPIKey = ""
-                }
-                .disabled(!session.hasOpenAIAPIKey)
+                SettingsActionButton(
+                    title: AppText.removeOpenAIAPIKey,
+                    systemImage: "trash",
+                    tint: QuickLatePalette.critical,
+                    action: {
+                        session.removeOpenAIAPIKey()
+                        openAIAPIKey = ""
+                    },
+                    isDisabled: !session.hasOpenAIAPIKey
+                )
             }
 
             SettingsStatusLine(
@@ -154,19 +154,25 @@ struct SettingsView: View {
                 color: session.hasOpenAIAPIKey ? QuickLatePalette.success : QuickLatePalette.attention
             )
 
-            Picker(AppText.gptTranscriptionModel, selection: $session.openAITranscriptionModel) {
-                ForEach(OpenAIRealtimeTranscriptionModel.allCases) { model in
-                    Text(model.title).tag(model)
-                }
-            }
-            .disabled(session.isRunning)
+            HStack(spacing: 10) {
+                SettingsMenuSelector(
+                    title: AppText.gptTranscriptionModel,
+                    systemImage: "waveform",
+                    options: OpenAIRealtimeTranscriptionModel.allCases,
+                    selection: $session.openAITranscriptionModel,
+                    titleForOption: { $0.title },
+                    isDisabled: session.isRunning
+                )
 
-            Picker(AppText.gptTranslationModel, selection: $session.openAITranslationModel) {
-                ForEach(OpenAIRealtimeTranslationModel.allCases) { model in
-                    Text(model.title).tag(model)
-                }
+                SettingsMenuSelector(
+                    title: AppText.gptTranslationModel,
+                    systemImage: "text.bubble",
+                    options: OpenAIRealtimeTranslationModel.allCases,
+                    selection: $session.openAITranslationModel,
+                    titleForOption: { $0.title },
+                    isDisabled: session.isRunning
+                )
             }
-            .disabled(session.isRunning)
 
             Text(AppText.openAIAPIKeyDescription)
                 .font(.caption)
@@ -176,107 +182,116 @@ struct SettingsView: View {
     }
 
     private var floatingCaptionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker(AppText.floatingDisplay, selection: $session.floatingCaptionDisplayMode) {
-                ForEach(FloatingCaptionDisplayMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                SettingsMenuSelector(
+                    title: AppText.floatingDisplay,
+                    systemImage: "rectangle.on.rectangle",
+                    options: FloatingCaptionDisplayMode.allCases,
+                    selection: $session.floatingCaptionDisplayMode,
+                    titleForOption: { $0.title }
+                )
 
-            Picker(AppText.floatingTextSize, selection: $session.floatingCaptionTextSize) {
-                ForEach(FloatingCaptionTextSize.allCases) { size in
-                    Text(size.title).tag(size)
-                }
-            }
+                SettingsMenuSelector(
+                    title: AppText.floatingTextSize,
+                    systemImage: "textformat.size",
+                    options: FloatingCaptionTextSize.allCases,
+                    selection: $session.floatingCaptionTextSize,
+                    titleForOption: { $0.title }
+                )
 
-            Picker(AppText.floatingLineCount, selection: $session.floatingCaptionLineCount) {
-                ForEach(FloatingCaptionLineCount.allCases) { lineCount in
-                    Text(lineCount.title).tag(lineCount)
-                }
+                SettingsMenuSelector(
+                    title: AppText.floatingLineCount,
+                    systemImage: "line.3.horizontal",
+                    options: FloatingCaptionLineCount.allCases,
+                    selection: $session.floatingCaptionLineCount,
+                    titleForOption: { $0.title }
+                )
             }
 
             Text(AppText.floatingDisplayDescription)
                 .font(.caption)
                 .foregroundStyle(QuickLatePalette.slate)
-                .lineLimit(2)
+                .lineLimit(1)
         }
     }
 
     private var recordingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker(AppText.sessionLength, selection: $session.sessionDurationMode) {
-                ForEach(SessionDurationMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                SettingsMenuSelector(
+                    title: AppText.sessionLength,
+                    systemImage: "timer",
+                    options: SessionDurationMode.allCases,
+                    selection: $session.sessionDurationMode,
+                    titleForOption: { $0.title },
+                    isDisabled: session.isRunning
+                )
+
+                SettingsNumericStepper(
+                    title: AppText.paragraphBreakSilenceInterval,
+                    value: $session.paragraphBreakSilenceInterval,
+                    range: 1...15,
+                    step: 0.5
+                )
             }
-            .pickerStyle(.radioGroup)
-            .disabled(session.isRunning)
 
             Text(session.sessionDurationMode.detail)
                 .font(.caption)
                 .foregroundStyle(QuickLatePalette.slate)
-                .lineLimit(3)
+                .lineLimit(1)
 
-            Stepper(
-                value: $session.paragraphBreakSilenceInterval,
-                in: 1...15,
-                step: 0.5
-            ) {
-                HStack {
-                    Text(AppText.paragraphBreakSilenceInterval)
-                    Spacer()
-                    Text(AppText.seconds(session.paragraphBreakSilenceInterval))
-                        .foregroundStyle(QuickLatePalette.slate)
-                }
-            }
+            SettingsToggleRow(
+                title: AppText.transcriptLint,
+                subtitle: nil,
+                systemImage: "checklist",
+                isOn: $session.isTranscriptLintEnabled,
+                isDisabled: session.isUsingOpenAIRealtime || session.isRunning
+            )
 
-            Toggle(AppText.transcriptLint, isOn: $session.isTranscriptLintEnabled)
-                .disabled(session.isUsingOpenAIRealtime || session.isRunning)
+            HStack(spacing: 10) {
+                SettingsMenuSelector(
+                    title: AppText.savedTranscriptContent,
+                    systemImage: "tray.full",
+                    options: SavedTranscriptContentMode.allCases,
+                    selection: $session.savedTranscriptContentMode,
+                    titleForOption: { $0.title }
+                )
 
-            Picker(AppText.savedTranscriptContent, selection: $session.savedTranscriptContentMode) {
-                ForEach(SavedTranscriptContentMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-
-            HStack {
-                Text(AppText.autoSaveDescription)
-                    .font(.caption)
-                    .foregroundStyle(QuickLatePalette.slate)
-                    .lineLimit(3)
-                Spacer()
-                Button {
-                    session.openTranscriptsFolder()
-                } label: {
-                    Label(AppText.openSaveFolder, systemImage: "folder")
-                }
-                .controlSize(.small)
+                SettingsActionButton(
+                    title: AppText.openSaveFolder,
+                    systemImage: "folder",
+                    action: { session.openTranscriptsFolder() }
+                )
             }
         }
     }
 
     private var appAndPermissionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(AppText.showDockIcon, isOn: $session.showDockIcon)
-
-            Text(AppText.showDockIconDescription)
-                .font(.caption)
-                .foregroundStyle(QuickLatePalette.slate)
-                .lineLimit(3)
+        VStack(alignment: .leading, spacing: 10) {
+            SettingsToggleRow(
+                title: AppText.showDockIcon,
+                subtitle: AppText.showDockIconDescription,
+                systemImage: "dock.rectangle",
+                isOn: $session.showDockIcon
+            )
 
             Divider()
 
-            Text(AppText.permissionsHelp)
-                .font(.caption)
-                .foregroundStyle(QuickLatePalette.slate)
-                .lineLimit(4)
+            HStack(alignment: .center, spacing: 12) {
+                Text(AppText.permissionsHelp)
+                    .font(.caption)
+                    .foregroundStyle(QuickLatePalette.slate)
+                    .lineLimit(2)
 
-            Button {
-                session.openPrivacySettings()
-            } label: {
-                Label(AppText.openPrivacySettings, systemImage: "lock.shield")
+                Spacer(minLength: 8)
+
+                SettingsActionButton(
+                    title: AppText.openPrivacySettings,
+                    systemImage: "lock.shield",
+                    action: { session.openPrivacySettings() }
+                )
             }
-            .controlSize(.small)
         }
     }
 
@@ -334,44 +349,335 @@ private struct SettingsLanguageSection: View {
                         color: QuickLatePalette.primary
                     )
 
-                    Picker(AppText.preferredLanguage, selection: $session.targetLanguage) {
-                        ForEach(LanguageOption.supported) { language in
-                            Text(language.localizedTitle).tag(language)
-                        }
-                    }
-                    .disabled(session.isRunning)
+                    SettingsMenuSelector(
+                        title: AppText.preferredLanguage,
+                        systemImage: "globe",
+                        options: LanguageOption.supported,
+                        selection: $session.targetLanguage,
+                        titleForOption: { $0.localizedTitle },
+                        isDisabled: session.isRunning
+                    )
 
                     Text(AppText.openAILanguageModeDescription)
                         .font(.caption)
                         .foregroundStyle(QuickLatePalette.slate)
                         .lineLimit(3)
                 } else {
-                    Picker(AppText.from, selection: $session.sourceLanguage) {
-                        ForEach(LanguageOption.supported) { language in
-                            Text(language.localizedTitle).tag(language)
-                        }
-                    }
-                    .disabled(session.isRunning)
+                    HStack(alignment: .bottom, spacing: 10) {
+                        SettingsMenuSelector(
+                            title: AppText.from,
+                            systemImage: "waveform",
+                            options: LanguageOption.supported,
+                            selection: $session.sourceLanguage,
+                            titleForOption: { $0.localizedTitle },
+                            isDisabled: session.isRunning
+                        )
 
-                    Picker(AppText.to, selection: $session.targetLanguage) {
-                        ForEach(LanguageOption.supported) { language in
-                            Text(language.localizedTitle).tag(language)
-                        }
-                    }
-                    .disabled(session.isRunning)
+                        SettingsIconButton(
+                            systemImage: "arrow.left.arrow.right",
+                            accessibilityLabel: AppText.swapLanguages,
+                            action: swapLanguages,
+                            isDisabled: session.isRunning
+                        )
 
-                    Button {
-                        let source = session.sourceLanguage
-                        session.sourceLanguage = session.targetLanguage
-                        session.targetLanguage = source
-                    } label: {
-                        Label(AppText.swapLanguages, systemImage: "arrow.left.arrow.right")
+                        SettingsMenuSelector(
+                            title: AppText.to,
+                            systemImage: "text.bubble",
+                            options: LanguageOption.supported,
+                            selection: $session.targetLanguage,
+                            titleForOption: { $0.localizedTitle },
+                            isDisabled: session.isRunning
+                        )
                     }
-                    .disabled(session.isRunning)
-                    .controlSize(.small)
                 }
             }
         }
+    }
+
+    private func swapLanguages() {
+        let source = session.sourceLanguage
+        session.sourceLanguage = session.targetLanguage
+        session.targetLanguage = source
+    }
+}
+
+private struct SettingsTextFieldSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(QuickLatePalette.inkDeep)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous)
+                    .strokeBorder(QuickLatePalette.primary.opacity(0.22), lineWidth: 1)
+            }
+    }
+}
+
+private struct SettingsSegmentedControl<Option: Hashable>: View {
+    let title: String
+    let options: [Option]
+    @Binding var selection: Option
+    let titleForOption: (Option) -> String
+    var isDisabled = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(QuickLatePalette.inkDeep)
+                .lineLimit(1)
+
+            HStack(spacing: 3) {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        guard !isDisabled else { return }
+                        selection = option
+                    } label: {
+                        Text(titleForOption(option))
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(selection == option ? QuickLatePalette.onPrimary : QuickLatePalette.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                            .frame(maxWidth: .infinity, minHeight: 28)
+                            .padding(.horizontal, 10)
+                            .background(selection == option ? QuickLatePalette.primary : Color.clear, in: Capsule())
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isDisabled)
+                }
+            }
+            .padding(3)
+            .frame(width: 360)
+            .background(QuickLatePalette.surfaceSoft, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+            }
+            .opacity(isDisabled ? 0.56 : 1)
+        }
+    }
+}
+
+private struct SettingsMenuSelector<Option: Hashable>: View {
+    let title: String
+    let systemImage: String
+    let options: [Option]
+    @Binding var selection: Option
+    let titleForOption: (Option) -> String
+    var isDisabled = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(QuickLatePalette.slate)
+                .lineLimit(1)
+
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button(titleForOption(option)) {
+                        selection = option
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(QuickLatePalette.primary)
+                    Text(titleForOption(selection))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(QuickLatePalette.inkDeep)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(QuickLatePalette.steel)
+                }
+                .padding(.horizontal, 12)
+                .frame(minHeight: 36)
+                .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous)
+                        .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .disabled(isDisabled)
+            .opacity(isDisabled ? 0.56 : 1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SettingsActionButton: View {
+    let title: String
+    let systemImage: String
+    var tint = QuickLatePalette.primary
+    let action: () -> Void
+    var isDisabled = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .padding(.horizontal, 11)
+                .frame(minHeight: 34)
+                .background(tint.opacity(0.11), in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(tint.opacity(0.16), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.48 : 1)
+    }
+}
+
+private struct SettingsIconButton: View {
+    let systemImage: String
+    let accessibilityLabel: String
+    let action: () -> Void
+    var isDisabled = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(QuickLatePalette.primary)
+                .frame(width: 34, height: 34)
+                .background(QuickLatePalette.primarySoft, in: Circle())
+                .overlay {
+                    Circle().strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.48 : 1)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    let subtitle: String?
+    let systemImage: String
+    @Binding var isOn: Bool
+    var isDisabled = false
+
+    var body: some View {
+        Button {
+            guard !isDisabled else { return }
+            isOn.toggle()
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isOn ? QuickLatePalette.primary : QuickLatePalette.surfaceSoft)
+                    if isOn {
+                        Image(systemName: "checkmark")
+                            .font(.caption2.weight(.black))
+                            .foregroundStyle(QuickLatePalette.onPrimary)
+                    }
+                }
+                .frame(width: 22, height: 22)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(isOn ? QuickLatePalette.primary.opacity(0.2) : QuickLatePalette.hairlineSoft, lineWidth: 1)
+                }
+
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(isOn ? QuickLatePalette.primary : QuickLatePalette.steel)
+                    .frame(width: 18)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(QuickLatePalette.inkDeep)
+                        .lineLimit(1)
+
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(QuickLatePalette.slate)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 8)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(QuickLatePalette.surfaceSoft.opacity(isOn ? 1 : 0.72), in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous)
+                    .strokeBorder(isOn ? QuickLatePalette.primary.opacity(0.2) : QuickLatePalette.hairlineSoft, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.48 : 1)
+        .accessibilityLabel(title)
+        .accessibilityValue(isOn ? "On" : "Off")
+    }
+}
+
+private struct SettingsNumericStepper: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(QuickLatePalette.slate)
+                .lineLimit(1)
+
+            HStack(spacing: 8) {
+                stepButton(systemImage: "minus", delta: -step)
+
+                Text(AppText.seconds(value))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+                    .frame(minWidth: 38)
+
+                stepButton(systemImage: "plus", delta: step)
+            }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 36)
+            .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous)
+                    .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func stepButton(systemImage: String, delta: Double) -> some View {
+        Button {
+            value = min(range.upperBound, max(range.lowerBound, value + delta))
+        } label: {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.black))
+                .foregroundStyle(QuickLatePalette.primary)
+                .frame(width: 22, height: 22)
+                .background(QuickLatePalette.primarySoft, in: Circle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -381,7 +687,7 @@ private struct SettingsCard<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: systemImage)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(QuickLatePalette.inkDeep)
@@ -389,7 +695,7 @@ private struct SettingsCard<Content: View>: View {
 
             content
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(QuickLatePalette.surface, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXXL, style: .continuous))
         .overlay {
@@ -458,10 +764,12 @@ private struct SettingsAssetAvailabilityRow: View {
                         .accessibilityLabel(AppText.languagePackDownloadInProgress)
                 }
             } else if availability.state.canDownload {
-                Button(availability.state == .failed ? AppText.retryDownload : AppText.download) {
-                    download()
-                }
-                .controlSize(.small)
+                SettingsActionButton(
+                    title: availability.state == .failed ? AppText.retryDownload : AppText.download,
+                    systemImage: "arrow.down.circle",
+                    tint: color,
+                    action: download
+                )
             } else {
                 Text(availability.state.title)
                     .font(.caption.weight(.semibold))

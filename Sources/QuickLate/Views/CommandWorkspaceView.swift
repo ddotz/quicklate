@@ -90,7 +90,7 @@ struct CommandWorkspaceView: View {
             }
 
             HStack(alignment: .center, spacing: 12) {
-                WorkspaceProcessingEnginePicker(
+                WorkspaceProcessingEngineSegmentedControl(
                     selection: processingEngineBinding,
                     isDisabled: viewModel.session.isRunning
                 )
@@ -363,20 +363,38 @@ private enum WorkspaceProcessingEngine: String, CaseIterable, Identifiable {
     }
 }
 
-private struct WorkspaceProcessingEnginePicker: View {
+private struct WorkspaceProcessingEngineSegmentedControl: View {
     @Binding var selection: WorkspaceProcessingEngine
     let isDisabled: Bool
 
     var body: some View {
-        Picker(AppText.model, selection: $selection) {
+        HStack(spacing: 3) {
             ForEach(WorkspaceProcessingEngine.allCases) { engine in
-                Text(engine.title).tag(engine)
+                Button {
+                    guard !isDisabled else { return }
+                    selection = engine
+                } label: {
+                    Text(engine.title)
+                        .font(.system(size: workspaceDensity.languageChipFontSize, weight: .bold))
+                        .foregroundStyle(selection == engine ? QuickLatePalette.onPrimary : QuickLatePalette.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .padding(.horizontal, 10)
+                        .background(selection == engine ? QuickLatePalette.primary : Color.clear, in: Capsule())
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isDisabled)
             }
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .frame(width: 176)
-        .disabled(isDisabled)
+        .padding(3)
+        .frame(width: 205)
+        .background(QuickLatePalette.surfaceSoft, in: Capsule())
+        .overlay {
+            Capsule().strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+        }
+        .opacity(isDisabled ? 0.56 : 1)
         .accessibilityLabel(AppText.model)
     }
 }

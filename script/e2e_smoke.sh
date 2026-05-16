@@ -83,6 +83,20 @@ assert_settings_owns_setup_controls() {
   grep -q 'SettingsProcessingEngine' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'SettingsLanguageSection' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'SettingsAssetAvailabilityRow' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsSegmentedControl' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsMenuSelector' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsIconButton' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsActionButton' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsTextFieldSurface' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsNumericStepper' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'SettingsToggleRow' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'WorkspaceProcessingEngineSegmentedControl' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  ! grep -q '\.pickerStyle(\.segmented)' Sources/QuickLate/Views/SettingsView.swift
+  ! grep -q '\.pickerStyle(\.segmented)' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  ! grep -q '\.textFieldStyle(\.roundedBorder)' Sources/QuickLate/Views/SettingsView.swift
+  ! grep -q 'Stepper(' Sources/QuickLate/Views/SettingsView.swift
+  ! grep -q 'Toggle(' Sources/QuickLate/Views/SettingsView.swift
+  ! grep -q 'Text(AppText.languagePackNeeded)' Sources/QuickLate/Views/SettingsView.swift
   printf 'workspace setup rail absent and settings entrypoint/sections present\n' | tee -a "$EVIDENCE_DIR/e2e.log"
 }
 
