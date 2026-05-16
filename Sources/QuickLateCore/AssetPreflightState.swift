@@ -54,6 +54,10 @@ public struct AssetPreflightState: Equatable, Sendable {
         speech == .downloading || translation == .downloading
     }
 
+    public var requiresAvailabilityRefresh: Bool {
+        speech == .checking || translation == .checking
+    }
+
     public var primaryAction: AssetPrimaryAction {
         if speech == .checking || translation == .checking || speech == .downloading || translation == .downloading {
             return .wait

@@ -548,6 +548,9 @@ final class TranslationSessionStore {
         case .changeLanguagePair:
             statusMessage = AppText.changeLanguagePair
         case .wait:
+            if applePreflightState.requiresAvailabilityRefresh {
+                refreshModelAvailability()
+            }
             statusMessage = AppText.checkingLanguagePacks
         }
     }

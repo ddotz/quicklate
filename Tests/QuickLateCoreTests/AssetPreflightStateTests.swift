@@ -81,6 +81,23 @@ struct AssetPreflightStateTests {
     }
 
     @Test
+    func checkingAssetsRequestAvailabilityRefresh() {
+        let checking = AssetPreflightState(
+            speech: .checking,
+            translation: .installed,
+            startIntent: .none
+        )
+        let downloading = AssetPreflightState(
+            speech: .downloading,
+            translation: .installed,
+            startIntent: .none
+        )
+
+        #expect(checking.requiresAvailabilityRefresh)
+        #expect(!downloading.requiresAvailabilityRefresh)
+    }
+
+    @Test
     func failedInstallStatesAllowRetryDownloadRequest() {
         #expect(AssetInstallState.downloadRequired.allowsDownloadRequest)
         #expect(AssetInstallState.failed.allowsDownloadRequest)
