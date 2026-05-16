@@ -40,6 +40,18 @@ struct AssetPreflightStateTests {
     }
 
     @Test
+    func unavailableAssetsRequireSystemSettings() {
+        let state = AssetPreflightState(
+            speech: .unavailable,
+            translation: .installed,
+            startIntent: .none
+        )
+
+        #expect(state.primaryAction == .openSystemSettings)
+        #expect(state.blocksStart)
+    }
+
+    @Test
     func failedDownloadOffersRetryAndClearsStartIntent() {
         let state = AssetPreflightState(
             speech: .installed,

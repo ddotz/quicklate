@@ -90,7 +90,12 @@ assert_settings_owns_setup_controls() {
   grep -q 'SettingsTextFieldSurface' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'SettingsNumericStepper' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'SettingsToggleRow' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'settingsCheckboxBorderColor' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'settingsCheckboxBorderWidth' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'WorkspaceProcessingEngineSegmentedControl' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  grep -q 'WorkspaceStartActionPolicy.route' Sources/QuickLate/Services/TranslationSessionStore.swift
+  grep -q 'workspaceStartAction' Sources/QuickLate/Services/TranslationSessionStore.swift
+  grep -q 'openPrivacySettings()' Sources/QuickLate/Services/TranslationSessionStore.swift
   ! grep -q '\.pickerStyle(\.segmented)' Sources/QuickLate/Views/SettingsView.swift
   ! grep -q '\.pickerStyle(\.segmented)' Sources/QuickLate/Views/CommandWorkspaceView.swift
   ! grep -q '\.textFieldStyle(\.roundedBorder)' Sources/QuickLate/Views/SettingsView.swift
@@ -150,6 +155,8 @@ log_step "bundle metadata check"
   test -f "$ROOT_DIR/dist/$APP_NAME.app/Contents/Resources/MenuBarIcon.png"
   test -f "$ROOT_DIR/dist/$APP_NAME.app/Contents/Resources/QuickLateLogo.png"
   /usr/libexec/PlistBuddy -c 'Print :NSSystemAudioCaptureUsageDescription' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Print :NSSpeechRecognitionUsageDescription' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$ROOT_DIR/dist/$APP_NAME.app/Contents/Info.plist"
 } | tee "$EVIDENCE_DIR/bundle-metadata.log"
 
 defaults write "$BUNDLE_ID" showDockIcon -bool false

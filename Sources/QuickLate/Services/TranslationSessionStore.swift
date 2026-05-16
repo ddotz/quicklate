@@ -416,14 +416,29 @@ final class TranslationSessionStore {
     }
 
     func requestStartFromWorkspace() {
-        switch applePreflightState.primaryAction {
-        case .start:
+        let primaryAction = applePreflightState.primaryAction
+        let route = WorkspaceStartActionPolicy.route(for: primaryAction)
+        E2ERuntimeReporter.report(
+            "workspaceStartAction",
+            fields: [
+                "primaryAction": String(describing: primaryAction),
+                "route": route.rawValue
+            ]
+        )
+
+        switch route {
+        case .startCapture:
             start()
-        case .downloadAndStart, .retryDownload:
+        case .downloadAssetsAndStart:
             assetDownloadCoordinator.rememberStartAfterDownload()
             downloadModelAssets(for: .appleSystem)
-        case .changeLanguagePair, .openSystemSettings, .wait:
-            statusMessage = AppText.languagePackNeeded
+        case .openSystemSettings:
+            statusMessage = AppText.permissionsHelp
+            openPrivacySettings()
+        case .changeLanguagePair:
+            statusMessage = AppText.changeLanguagePair
+        case .wait:
+            statusMessage = AppText.checkingLanguagePacks
         }
     }
 

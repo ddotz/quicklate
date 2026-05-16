@@ -566,6 +566,9 @@ private struct SettingsIconButton: View {
     }
 }
 
+private let settingsCheckboxBorderColor = QuickLatePalette.steel.opacity(0.58)
+private let settingsCheckboxBorderWidth: CGFloat = 1.35
+
 private struct SettingsToggleRow: View {
     let title: String
     let subtitle: String?
@@ -581,7 +584,7 @@ private struct SettingsToggleRow: View {
             HStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(isOn ? QuickLatePalette.primary : QuickLatePalette.surfaceSoft)
+                        .fill(isOn ? QuickLatePalette.primary : QuickLatePalette.surface)
                     if isOn {
                         Image(systemName: "checkmark")
                             .font(.caption2.weight(.black))
@@ -591,7 +594,7 @@ private struct SettingsToggleRow: View {
                 .frame(width: 22, height: 22)
                 .overlay {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(isOn ? QuickLatePalette.primary.opacity(0.2) : QuickLatePalette.hairlineSoft, lineWidth: 1)
+                        .strokeBorder(checkboxBorderColor, lineWidth: isOn ? 1 : settingsCheckboxBorderWidth)
                 }
 
                 Image(systemName: systemImage)
@@ -626,9 +629,13 @@ private struct SettingsToggleRow: View {
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .opacity(isDisabled ? 0.48 : 1)
+        .opacity(isDisabled ? 0.68 : 1)
         .accessibilityLabel(title)
         .accessibilityValue(isOn ? "On" : "Off")
+    }
+
+    private var checkboxBorderColor: Color {
+        isOn ? QuickLatePalette.primary.opacity(0.82) : settingsCheckboxBorderColor
     }
 }
 
