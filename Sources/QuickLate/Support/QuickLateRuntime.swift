@@ -6,6 +6,7 @@ final class QuickLateRuntime {
 
     let session: TranslationSessionStore
     let menuBarPanelController: MenuBarPanelController
+    private let menuBarPopoverHotKey = MenuBarPopoverHotKey()
 
     private init() {
         session = TranslationSessionStore()
@@ -14,5 +15,8 @@ final class QuickLateRuntime {
 
     func installMenuBarPanel() {
         menuBarPanelController.install(session: session)
+        menuBarPopoverHotKey.register { [menuBarPanelController] in
+            menuBarPanelController.showPopoverFromShortcut()
+        }
     }
 }

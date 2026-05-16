@@ -279,6 +279,10 @@ package enum TranscriptTextProcessor {
         let normalizedCurrent = normalizedForComparison(current)
         let normalizedIncoming = normalizedForComparison(incoming)
 
+        if isAdjacentExactRepeat(incoming: incoming, repeatedUnit: current) {
+            return current
+        }
+
         if normalizedCurrent.count > normalizedIncoming.count + 2 {
             return current
         }
@@ -545,6 +549,25 @@ package enum TranscriptTextProcessor {
     private static func shouldSuppressExactRecentRepeat(_ normalizedText: String) -> Bool {
         normalizedText.count >= 15
             && transcriptTokens(from: normalizedText).count >= 4
+    }
+
+    private static func isAdjacentExactRepeat(incoming: String, repeatedUnit: String) -> Bool {
+        let normalizedUnit = normalizedForRepeatDetection(repeatedUnit)
+        guard shouldSuppressExactRecentRepeat(normalizedUnit) else { return false }
+
+        let normalizedIncoming = normalizedForRepeatDetection(incoming)
+        return normalizedIncoming == normalizedUnit + " " + normalizedUnit
+    }
+
+    private static func normalizedForRepeatDetection(_ text: String) -> String {
+        let allowedCharacters = CharacterSet.letters
+            .union(.decimalDigits)
+            .union(.whitespacesAndNewlines)
+        let punctuationAsSpaces = String(text.unicodeScalars.map { scalar in
+            allowedCharacters.contains(scalar) ? Character(scalar) : " "
+        })
+
+        return normalizedForComparison(punctuationAsSpaces).lowercased()
     }
 
     private static func isLetterOrNumber(_ character: Character) -> Bool {

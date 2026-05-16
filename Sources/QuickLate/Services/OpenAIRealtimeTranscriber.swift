@@ -4,7 +4,7 @@ import Foundation
 
 final class OpenAIRealtimeTranscriber: @unchecked Sendable {
     private static let realtimeAudioSampleRate = 24_000
-    private static let maxAudioChunkMilliseconds = 80
+    private static let maxAudioChunkMilliseconds = 40
     private static let bytesPerPCM16Sample = 2
     private static let maxPCM16AudioChunkByteCount = realtimeAudioSampleRate
         * bytesPerPCM16Sample

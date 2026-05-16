@@ -42,7 +42,7 @@ final class LiveSpeechTranscriber: @unchecked Sendable {
     weak var delegate: LiveSpeechTranscriberDelegate?
 
     private static let reusablePCMBufferCount = 48
-    private static let analyzerInputBufferLimit = 32
+    private static let analyzerInputBufferLimit = 8
 
     private let audioFormat = AVAudioFormat(
         commonFormat: .pcmFormatInt16,

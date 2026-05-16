@@ -1,4 +1,5 @@
 import AppKit
+import QuickLateCore
 import SwiftUI
 
 @MainActor
@@ -48,15 +49,30 @@ final class MenuBarPanelController: NSObject, NSPopoverDelegate {
         refreshButtonAppearance()
     }
 
+    func showPopoverFromShortcut() {
+        showPopover(activatesApp: true)
+    }
+
     @objc
     private func togglePopover(_ sender: Any?) {
+        if popover.isShown {
+            popover.performClose(sender)
+        } else {
+            showPopover(activatesApp: false)
+        }
+
+        refreshButtonAppearance()
+    }
+
+    private func showPopover(activatesApp: Bool) {
         guard let button = statusItem?.button else {
             return
         }
 
-        if popover.isShown {
-            popover.performClose(sender)
-        } else {
+        if activatesApp {
+            NSApp.activate()
+        }
+        if !popover.isShown {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
 
@@ -86,7 +102,7 @@ final class MenuBarPanelController: NSObject, NSPopoverDelegate {
         button.sendAction(on: [.leftMouseDown])
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
-        button.toolTip = AppText.menuBarTitle
+        button.toolTip = "\(AppText.menuBarTitle) · \(MenuBarPopoverShortcut.displayLabel)"
         E2ERuntimeReporter.report("statusItemInstalled")
     }
 

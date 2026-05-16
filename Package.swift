@@ -26,6 +26,7 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("AVFAudio"),
                 .linkedFramework("AudioToolbox"),
+                .linkedFramework("Carbon"),
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("ScreenCaptureKit"),
                 .linkedFramework("Security"),

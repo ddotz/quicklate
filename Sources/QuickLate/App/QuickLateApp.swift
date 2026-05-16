@@ -36,6 +36,12 @@ struct QuickLateApp: App {
         .defaultSize(width: Self.defaultMainWindowSize.width, height: Self.defaultMainWindowSize.height)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .appInfo) {
+                Button(AppText.showMenuBarPopover) {
+                    menuBarPanelController.showPopoverFromShortcut()
+                }
+                .keyboardShortcut("l", modifiers: [.control, .option, .command])
+            }
         }
 
         Window(AppText.floatingCaptions, id: QuickLateWindowID.floatingCaptions) {

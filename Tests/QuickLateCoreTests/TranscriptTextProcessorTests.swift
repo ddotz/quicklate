@@ -83,6 +83,17 @@ struct TranscriptTextProcessorTests {
     }
 
     @Test
+    func partialRevisionDoesNotPreferAdjacentExactRepeat() {
+        let current = "All right Chad this is my last slide."
+        let duplicated = "All right Chad this is my last slide. All right Chad this is my last slide."
+
+        #expect(TranscriptTextProcessor.preferredPartialText(
+            current: current,
+            incoming: duplicated
+        ) == current)
+    }
+
+    @Test
     func displayTailKeepsRecentTextAtLineBoundary() {
         let text = """
         First line that can be hidden

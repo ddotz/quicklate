@@ -42,13 +42,13 @@ private struct PendingCaptionPresentation {
 final class TranslationSessionStore {
     private static let maxTranslationCacheEntries = 2_000
     private static let largeTranscriptPresentationCharacterLimit = 4_000
-    private static let largeTranscriptPresentationInterval: TimeInterval = 0.35
+    private static let largeTranscriptPresentationInterval: TimeInterval = RealtimeLatencyPolicy.largeTranscriptPresentationIntervalSeconds
     private static let largeTranscriptTranslationCharacterLimit = 4_000
     private static let veryLargeTranscriptTranslationCharacterLimit = 10_000
-    private static let floatingCaptionEarlyRevisionWindow = 0.45
+    private static let floatingCaptionEarlyRevisionWindow = RealtimeLatencyPolicy.floatingCaptionEarlyRevisionWindowSeconds
     private static let floatingCaptionImmediateExtensionCharacterLimit = 28
-    private static let minimumFloatingCaptionDwell = 1.4
-    private static let maximumFloatingCaptionDwell = 3.6
+    private static let minimumFloatingCaptionDwell = RealtimeLatencyPolicy.minimumFloatingCaptionDwellSeconds
+    private static let maximumFloatingCaptionDwell = RealtimeLatencyPolicy.maximumFloatingCaptionDwellSeconds
 
     var isRunning = false
     var isPaused = false
@@ -1685,7 +1685,8 @@ final class TranslationSessionStore {
         let sourceLength = normalizedTranscriptForComparison(floatingPresentedSourceText).count
         let translationLength = normalizedTranscriptForComparison(floatingDisplayTranslationText).count
         let readableLength = max(sourceLength, translationLength)
-        let dwell = 1.1 + Double(readableLength) / 32.0
+        let dwell = RealtimeLatencyPolicy.floatingCaptionBaseDwellSeconds
+            + Double(readableLength) / RealtimeLatencyPolicy.floatingCaptionCharactersPerSecond
         return min(
             max(Self.minimumFloatingCaptionDwell, dwell),
             Self.maximumFloatingCaptionDwell
@@ -2313,16 +2314,20 @@ final class TranslationSessionStore {
         if usesLongSessionMode {
             let sourceLength = sourceText.utf16.count
             if sourceLength >= Self.veryLargeTranscriptTranslationCharacterLimit {
-                return 900
+                return RealtimeLatencyPolicy.veryLargeTranscriptTranslationDebounceMilliseconds
             }
             if sourceLength >= Self.largeTranscriptTranslationCharacterLimit {
-                return 450
+                return RealtimeLatencyPolicy.largeTranscriptTranslationDebounceMilliseconds
             }
         }
 
-        guard translationBurstStartedAt != .distantPast else { return 45 }
+        guard translationBurstStartedAt != .distantPast else {
+            return RealtimeLatencyPolicy.defaultTranslationDebounceMilliseconds
+        }
         let burstAge = Date().timeIntervalSince(translationBurstStartedAt)
-        return burstAge >= 0.45 ? 0 : 70
+        return burstAge >= RealtimeLatencyPolicy.maximumTranslationBurstHoldSeconds
+            ? 0
+            : RealtimeLatencyPolicy.initialTranslationBurstDebounceMilliseconds
     }
 
     private func updateTranslation(_ translatedText: String, for line: CaptionLine, matching sourceText: String) {

@@ -260,6 +260,7 @@ enum AppText {
     static let dubbing = localized(english: "Dubbing", korean: "더빙", japanese: "音声出力", chineseSimplified: "配音")
     static let voiceOutput = localized(english: "Voice Output", korean: "음성 출력", japanese: "音声出力", chineseSimplified: "语音输出")
     static let menuBarTitle = localized(english: "QuickLate", korean: "QuickLate")
+    static let showMenuBarPopover = localized(english: "Show Menu Bar Popover", korean: "상단바 팝오버 보기")
     static let menuBarRunningTitle = localized(english: "Live", korean: "기록 중")
     static let menuBarPausedTitle = localized(english: "Paused", korean: "일시정지")
     static let floatingCaptions = localized(english: "Floating Captions", korean: "플로팅 자막")
