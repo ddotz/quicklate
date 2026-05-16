@@ -6,6 +6,16 @@ public enum WorkspaceStartRoute: String, Equatable, Sendable {
     case wait
 }
 
+public enum WorkspaceStartFailureKind: Equatable, Sendable {
+    case permissionRequired
+    case other
+}
+
+public enum WorkspaceStartFailureRecoveryRoute: String, Equatable, Sendable {
+    case requestPermissionsAgain
+    case showError
+}
+
 public enum WorkspaceStartActionPolicy {
     public static func route(for primaryAction: AssetPrimaryAction) -> WorkspaceStartRoute {
         switch primaryAction {
@@ -19,6 +29,15 @@ public enum WorkspaceStartActionPolicy {
             .changeLanguagePair
         case .wait:
             .wait
+        }
+    }
+
+    public static func recoveryRoute(for failureKind: WorkspaceStartFailureKind) -> WorkspaceStartFailureRecoveryRoute {
+        switch failureKind {
+        case .permissionRequired:
+            .requestPermissionsAgain
+        case .other:
+            .showError
         }
     }
 }

@@ -143,6 +143,7 @@ final class TranslationSessionStore {
         }
     }
     var statusMessage = AppText.ready
+    var lastErrorMessage: String?
     var toastMessage: String?
     var toastSequence = 0
     var lines: [CaptionLine] = []
@@ -260,7 +261,9 @@ final class TranslationSessionStore {
         isPaused = false
         setCaptionersPaused(false)
         isRunning = true
+        lastErrorMessage = nil
         statusMessage = AppText.checkingScreenPermission
+        E2ERuntimeReporter.report("workspaceStartRequested")
 
         Task {
             do {
@@ -272,12 +275,10 @@ final class TranslationSessionStore {
                     || openAITranslationModel.usesRealtimeAudioTranslation
                 try await capture.start(sampleRate: usesOpenAIRealtimeAudio ? 24_000 : 16_000)
                 statusMessage = AppText.listeningForSpeech
+                E2ERuntimeReporter.report("workspaceStartSucceeded")
                 warmTranslationSession()
             } catch {
-                isRunning = false
-                stopCaptioners()
-                await capture.stop()
-                statusMessage = AppText.startFailed(error.localizedDescription)
+                await handleStartFailure(error)
             }
         }
     }
@@ -335,6 +336,48 @@ final class TranslationSessionStore {
         }
 
         NSWorkspace.shared.open(url)
+    }
+
+    private func handleStartFailure(_ error: Error) async {
+        isRunning = false
+        stopCaptioners()
+        await capture.stop()
+
+        let message = error.localizedDescription
+        lastErrorMessage = message
+        let failureKind = startFailureKind(for: error)
+        let recoveryRoute = WorkspaceStartActionPolicy.recoveryRoute(for: failureKind)
+        E2ERuntimeReporter.report(
+            "workspaceStartFailure",
+            fields: [
+                "failureKind": String(describing: failureKind),
+                "recoveryRoute": recoveryRoute.rawValue,
+                "error": message
+            ]
+        )
+
+        switch recoveryRoute {
+        case .requestPermissionsAgain:
+            requestPermissionsAgainAfterStartFailure(message)
+        case .showError:
+            statusMessage = AppText.startFailed(message)
+        }
+    }
+
+    private func startFailureKind(for error: Error) -> WorkspaceStartFailureKind {
+        if case .screenRecordingNotGranted = error as? CaptureError {
+            return .permissionRequired
+        }
+        if case .notAuthorized = error as? SpeechError {
+            return .permissionRequired
+        }
+        return .other
+    }
+
+    private func requestPermissionsAgainAfterStartFailure(_ message: String) {
+        statusMessage = AppText.permissionRequestRepeated
+        lastErrorMessage = message
+        openPrivacySettings()
     }
 
     func saveOpenAIAPIKey(_ key: String) {

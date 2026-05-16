@@ -14,7 +14,7 @@ final class MenuBarPanelController: NSObject, NSPopoverDelegate {
         super.init()
         popover.animates = true
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 360, height: 430)
+        popover.contentSize = NSSize(width: 360, height: 520)
         popover.contentViewController = hostingController
         popover.delegate = self
         DistributedNotificationCenter.default().addObserver(

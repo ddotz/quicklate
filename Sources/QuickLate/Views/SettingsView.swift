@@ -249,7 +249,7 @@ struct SettingsView: View {
                 isDisabled: session.isUsingOpenAIRealtime || session.isRunning
             )
 
-            HStack(spacing: 10) {
+            HStack(alignment: .bottom, spacing: 10) {
                 SettingsMenuSelector(
                     title: AppText.savedTranscriptContent,
                     systemImage: "tray.full",
@@ -401,6 +401,10 @@ private struct SettingsLanguageSection: View {
     }
 }
 
+private enum SettingsControlMetrics {
+    static let controlHeight: CGFloat = 36
+}
+
 private struct SettingsTextFieldSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -498,7 +502,7 @@ private struct SettingsMenuSelector<Option: Hashable>: View {
                         .foregroundStyle(QuickLatePalette.steel)
                 }
                 .padding(.horizontal, 12)
-                .frame(minHeight: 36)
+                .frame(height: SettingsControlMetrics.controlHeight)
                 .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous)
@@ -530,7 +534,7 @@ private struct SettingsActionButton: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
                 .padding(.horizontal, 11)
-                .frame(minHeight: 34)
+                .frame(height: SettingsControlMetrics.controlHeight)
                 .background(tint.opacity(0.11), in: Capsule())
                 .overlay {
                     Capsule().strokeBorder(tint.opacity(0.16), lineWidth: 1)
@@ -664,7 +668,7 @@ private struct SettingsNumericStepper: View {
                 stepButton(systemImage: "plus", delta: step)
             }
             .padding(.horizontal, 10)
-            .frame(minHeight: 36)
+            .frame(height: SettingsControlMetrics.controlHeight)
             .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: QuickLateMetric.radiusXL, style: .continuous)

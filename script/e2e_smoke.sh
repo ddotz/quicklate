@@ -79,7 +79,11 @@ assert_settings_owns_setup_controls() {
     cat /tmp/quicklate-e2e-setup-rail.txt | tee -a "$EVIDENCE_DIR/e2e.log"
     return 1
   fi
-  grep -q 'SettingsLink' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  grep -q 'SettingsWindowPresenter.showSettingsWindow' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  grep -q 'makeStandaloneSettingsWindow' Sources/QuickLate/Support/SettingsWindowPresenter.swift
+  grep -q 'NSHostingController' Sources/QuickLate/Support/SettingsWindowPresenter.swift
+  grep -q 'settingsWindowPresented' Sources/QuickLate/Support/SettingsWindowPresenter.swift
+  ! grep -q 'sendAction' Sources/QuickLate/Support/SettingsWindowPresenter.swift
   grep -q 'SettingsProcessingEngine' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'SettingsLanguageSection' Sources/QuickLate/Views/SettingsView.swift
   grep -q 'SettingsAssetAvailabilityRow' Sources/QuickLate/Views/SettingsView.swift
@@ -95,7 +99,29 @@ assert_settings_owns_setup_controls() {
   grep -q 'WorkspaceProcessingEngineSegmentedControl' Sources/QuickLate/Views/CommandWorkspaceView.swift
   grep -q 'WorkspaceStartActionPolicy.route' Sources/QuickLate/Services/TranslationSessionStore.swift
   grep -q 'workspaceStartAction' Sources/QuickLate/Services/TranslationSessionStore.swift
+  grep -q 'workspaceStartFailure' Sources/QuickLate/Services/TranslationSessionStore.swift
+  grep -q 'requestPermissionsAgainAfterStartFailure' Sources/QuickLate/Services/TranslationSessionStore.swift
   grep -q 'openPrivacySettings()' Sources/QuickLate/Services/TranslationSessionStore.swift
+  grep -q 'QuickLateRuntime.shared.installMenuBarPanel' Sources/QuickLate/App/QuickLateApp.swift
+  grep -q 'MainWindowPresenter.ensureMainWindowVisible' Sources/QuickLate/App/QuickLateApp.swift
+  grep -q 'MainWindowPresenter.showMainWindow' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'SettingsWindowPresenter.showSettingsWindow' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'MenuBarAppInfoButton' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'MenuBarAppVersionInfo' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'fixedSize(horizontal: false, vertical: true)' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'textSelection(.enabled)' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'AppText.home' Sources/QuickLate/Views/MenuBarStatusView.swift
+  grep -q 'AppText.settings' Sources/QuickLate/Views/MenuBarStatusView.swift
+  ! grep -q 'AppText.homeOpen' Sources/QuickLate/Views/MenuBarStatusView.swift
+  ! grep -q 'SettingsLink' Sources/QuickLate/Views/MenuBarStatusView.swift
+  ! grep -q 'SettingsLink' Sources/QuickLate/Views/CommandWorkspaceView.swift
+  grep -q 'NSSize(width: 360, height: 520)' Sources/QuickLate/Support/MenuBarPanelController.swift
+  grep -q 'SettingsControlMetrics.controlHeight' Sources/QuickLate/Views/SettingsView.swift
+  grep -q 'HStack(alignment: .bottom, spacing: 10)' Sources/QuickLate/Views/SettingsView.swift
+  grep -q '이미 켜져 보인다면' Sources/QuickLate/Models/AppText.swift
+  ! grep -q 'QuickLatePalette.primaryDeep.opacity(0.7)' Sources/QuickLate/Views/MenuBarStatusView.swift
+  ! grep -q 'accentColor.opacity(0.42)' Sources/QuickLate/Views/MenuBarStatusView.swift
+  ! grep -q 'lineLimit(3)' Sources/QuickLate/Views/MenuBarStatusView.swift
   ! grep -q '\.pickerStyle(\.segmented)' Sources/QuickLate/Views/SettingsView.swift
   ! grep -q '\.pickerStyle(\.segmented)' Sources/QuickLate/Views/CommandWorkspaceView.swift
   ! grep -q '\.textFieldStyle(\.roundedBorder)' Sources/QuickLate/Views/SettingsView.swift

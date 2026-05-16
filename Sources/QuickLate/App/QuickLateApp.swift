@@ -5,24 +5,19 @@ import SwiftUI
 @main
 struct QuickLateApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var session = TranslationSessionStore()
-    @State private var menuBarPanelController = MenuBarPanelController()
+    @State private var session = QuickLateRuntime.shared.session
+    @State private var menuBarPanelController = QuickLateRuntime.shared.menuBarPanelController
 
-    private static let minimumMainWindowWidth: CGFloat = 900
-    private static let minimumMainWindowHeight: CGFloat = 560
-    private static let maximumMainWindowWidth: CGFloat = 1_280
-    private static let maximumMainWindowHeight: CGFloat = 820
-    private static let mainWindowWidthRatio: CGFloat = 0.56
-    private static let mainWindowHeightRatio: CGFloat = 0.68
+    private static let minimumMainWindowWidth = CGFloat(AppWindowMetrics.minimumMainWindowWidth)
+    private static let minimumMainWindowHeight = CGFloat(AppWindowMetrics.minimumMainWindowHeight)
 
     private static var defaultMainWindowSize: (width: CGFloat, height: CGFloat) {
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1_920, height: 1_050)
-        let scaledWidth = (visibleFrame.width * mainWindowWidthRatio).rounded()
-        let scaledHeight = (visibleFrame.height * mainWindowHeightRatio).rounded()
-        return (
-            width: min(max(scaledWidth, minimumMainWindowWidth), maximumMainWindowWidth),
-            height: min(max(scaledHeight, minimumMainWindowHeight), maximumMainWindowHeight)
+        let size = AppWindowMetrics.defaultMainWindowSize(
+            visibleWidth: Int(visibleFrame.width.rounded()),
+            visibleHeight: Int(visibleFrame.height.rounded())
         )
+        return (width: CGFloat(size.width), height: CGFloat(size.height))
     }
 
     var body: some Scene {
@@ -67,7 +62,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let showDockIcon = UserDefaults.standard.bool(forKey: "showDockIcon")
         let settings = AppPresenceSettings(showDockIcon: showDockIcon)
+        QuickLateRuntime.shared.installMenuBarPanel()
         AppPresenceController.shared.apply(settings, activate: showDockIcon)
+        if settings.mainWindowLaunchBehavior == .showAtLaunch {
+            scheduleDockLaunchMainWindowPresentation()
+        }
         E2ERuntimeReporter.report(
             "appDidFinishLaunching",
             fields: [
@@ -91,6 +90,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for delay in [0.10, 0.35, 0.90] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 self.closeMainWindowsForMenuBarOnlyLaunch()
+            }
+        }
+    }
+
+    private func scheduleDockLaunchMainWindowPresentation() {
+        for delay in [0.25, 0.70] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                MainWindowPresenter.ensureMainWindowVisible()
             }
         }
     }

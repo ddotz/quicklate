@@ -20,6 +20,16 @@ struct WorkspaceStartActionPolicyTests {
     }
 
     @Test
+    func permissionFailureRequestsPermissionAgain() {
+        #expect(WorkspaceStartActionPolicy.recoveryRoute(for: .permissionRequired) == .requestPermissionsAgain)
+    }
+
+    @Test
+    func otherStartFailureShowsErrorOnly() {
+        #expect(WorkspaceStartActionPolicy.recoveryRoute(for: .other) == .showError)
+    }
+
+    @Test
     func waitingAndUnsupportedStatesDoNotStartCapture() {
         #expect(WorkspaceStartActionPolicy.route(for: .wait) == .wait)
         #expect(WorkspaceStartActionPolicy.route(for: .changeLanguagePair) == .changeLanguagePair)

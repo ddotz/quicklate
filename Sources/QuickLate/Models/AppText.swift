@@ -259,7 +259,7 @@ enum AppText {
     static let library = localized(english: "Library", korean: "저장소", japanese: "ライブラリ", chineseSimplified: "资料库")
     static let dubbing = localized(english: "Dubbing", korean: "더빙", japanese: "音声出力", chineseSimplified: "配音")
     static let voiceOutput = localized(english: "Voice Output", korean: "음성 출력", japanese: "音声出力", chineseSimplified: "语音输出")
-    static let menuBarTitle = localized(english: "Captions", korean: "자막")
+    static let menuBarTitle = localized(english: "QuickLate", korean: "QuickLate")
     static let menuBarRunningTitle = localized(english: "Live", korean: "기록 중")
     static let menuBarPausedTitle = localized(english: "Paused", korean: "일시정지")
     static let floatingCaptions = localized(english: "Floating Captions", korean: "플로팅 자막")
@@ -269,6 +269,12 @@ enum AppText {
     static let captionsWindow = localized(english: "Caption Window", korean: "자막 창")
     static let hideFloatingCaptions = localized(english: "Hide Floating Captions", korean: "플로팅 자막 숨기기")
     static let openMainWindow = localized(english: "Open Main Window", korean: "메인 창 열기")
+    static let home = localized(english: "Home", korean: "홈")
+    static let homeOpen = localized(english: "Open Home", korean: "홈열기")
+    static let appInfo = localized(english: "App Info", korean: "앱 정보")
+    static let versionInfo = localized(english: "Version", korean: "버전")
+    static let latestErrorInfo = localized(english: "Latest error", korean: "최근 오류")
+    static let noErrorInfo = localized(english: "No recent errors", korean: "최근 오류 없음")
     static let floatingDisplay = localized(english: "Floating Display", korean: "플로팅 표시")
     static let floatingDisplayDescription = localized(
         english: "Choose what appears in the detachable floating caption window.",
@@ -448,6 +454,10 @@ enum AppText {
         english: "QuickLate needs Screen Recording, System Audio Recording, and Speech Recognition permission. After changing privacy settings, quit and relaunch the app.",
         korean: "QuickLate에는 화면 기록, 시스템 오디오 녹음, 음성 인식 권한이 필요합니다. 개인정보 보호 설정을 변경한 뒤 앱을 종료하고 다시 실행하세요."
     )
+    static let permissionRequestRepeated = localized(
+        english: "Permission is still not active for this build. If QuickLate is already enabled in Privacy Settings, turn it off and on once, then quit and relaunch QuickLate.",
+        korean: "현재 빌드에 권한이 아직 반영되지 않았습니다. 개인정보 보호 설정에서 QuickLate가 이미 켜져 있다면 한 번 껐다가 다시 켠 뒤 QuickLate를 종료하고 다시 실행하세요."
+    )
     static let checkingScreenPermission = localized(
         english: "Checking screen recording permission...",
         korean: "화면 기록 권한 확인 중..."
@@ -610,8 +620,8 @@ enum AppText {
         korean: "선택한 음성 인식기를 사용할 수 없습니다."
     )
     static let screenRecordingNotGranted = localized(
-        english: "Screen Recording permission is not active for this signed QuickLate app. Grant it once, then quit and relaunch QuickLate.",
-        korean: "서명된 QuickLate 앱에 화면 기록 권한이 활성화되어 있지 않습니다. 한 번 허용한 뒤 QuickLate를 종료하고 다시 실행하세요."
+        english: "Screen Recording permission is not active for this QuickLate build. If it already appears enabled in Privacy Settings, toggle QuickLate off and on once, then quit and relaunch QuickLate.",
+        korean: "현재 QuickLate 빌드에 화면 기록 권한이 활성화되어 있지 않습니다. 개인정보 보호 설정에서 이미 켜져 보인다면 QuickLate를 한 번 껐다가 다시 켠 뒤 앱을 종료하고 다시 실행하세요."
     )
     static let noActiveDisplay = localized(
         english: "No active display was available for system audio capture.",

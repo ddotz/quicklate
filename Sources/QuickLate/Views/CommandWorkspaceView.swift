@@ -56,7 +56,9 @@ struct CommandWorkspaceView: View {
                 HStack(spacing: 10) {
                     statusBadge
 
-                    SettingsLink {
+                    Button {
+                        SettingsWindowPresenter.showSettingsWindow()
+                    } label: {
                         TopBarSecondaryActionLabel(
                             title: AppText.settings,
                             systemImage: "gearshape",

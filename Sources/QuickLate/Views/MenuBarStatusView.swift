@@ -1,9 +1,12 @@
+import AppKit
+import QuickLateCore
 import SwiftUI
 
 struct MenuBarStatusView: View {
     @Bindable var session: TranslationSessionStore
     @Environment(\.openWindow) private var openWindow
     @State private var isFloatingCaptionVisible = FloatingCaptionWindowController.isOpen
+    @State private var isAppInfoExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -31,38 +34,59 @@ struct MenuBarStatusView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: statusSymbolName)
-                .font(.title2)
-                .foregroundStyle(statusColor)
-                .frame(width: 34, height: 34)
-                .background(statusColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                QuickLateAppIconView(size: 30)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppText.floatingCaptions)
+                Text(AppText.appName)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
 
-                Text(session.statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(QuickLatePalette.slate)
-                    .lineLimit(2)
+                Spacer(minLength: 0)
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        isAppInfoExpanded.toggle()
+                    }
+                } label: {
+                    MenuBarAppInfoButton(hasError: session.lastErrorMessage != nil)
+                }
+                .buttonStyle(.plain)
+                .help(AppText.appInfo)
+                .accessibilityLabel(AppText.appInfo)
             }
 
-            Spacer(minLength: 0)
+            if isAppInfoExpanded {
+                MenuBarAppVersionInfo(errorMessage: session.lastErrorMessage)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
     }
 
     private var actionGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 6)], spacing: 6) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+            Button {
+                toggleCapture()
+            } label: {
+                IconPanelButtonLabel(
+                    systemImage: session.isRunning ? "stop.fill" : "play.fill",
+                    title: session.isRunning ? AppText.stop : AppText.start,
+                    subtitle: session.isRunning ? AppText.menuBarRunningTitle : AppText.ready,
+                    accentColor: session.isRunning ? QuickLatePalette.critical : QuickLatePalette.primary,
+                    isSelected: !session.isRunning
+                )
+            }
+            .buttonStyle(.plain)
+
             Button {
                 toggleFloatingCaptions()
             } label: {
                 IconPanelButtonLabel(
                     systemImage: isFloatingCaptionVisible ? "captions.bubble.fill" : "captions.bubble",
-                    title: AppText.localized(english: "View", korean: "보기", japanese: "表示", chineseSimplified: "显示"),
+                    title: AppText.floatingCaptions,
                     subtitle: isFloatingCaptionVisible ? AppText.floatingCaptionPowerOn : AppText.floatingCaptionPowerOff,
-                    accentColor: isFloatingCaptionVisible ? .green : .secondary,
+                    accentColor: isFloatingCaptionVisible ? QuickLatePalette.success : QuickLatePalette.primary,
                     isSelected: isFloatingCaptionVisible
                 )
             }
@@ -72,60 +96,30 @@ struct MenuBarStatusView: View {
             .accessibilityValue(isFloatingCaptionVisible ? AppText.floatingCaptionPowerOn : AppText.floatingCaptionPowerOff)
 
             Button {
-                FloatingCaptionWindowController.close()
-                syncFloatingCaptionVisibility()
+                MainWindowPresenter.showMainWindow(openWindow: openWindow)
             } label: {
                 IconPanelButtonLabel(
-                    systemImage: "eye.slash",
-                    title: AppText.localized(english: "Hide", korean: "숨김", japanese: "非表示", chineseSimplified: "隐藏"),
-                    subtitle: AppText.localized(english: "Close", korean: "닫기", japanese: "閉じる", chineseSimplified: "关闭"),
-                    accentColor: .secondary
-                )
-            }
-            .buttonStyle(.plain)
-            .help(AppText.hideFloatingCaptions)
-
-            Button {
-                openWindow(id: QuickLateWindowID.main)
-                NSApp.activate(ignoringOtherApps: true)
-            } label: {
-                IconPanelButtonLabel(
-                    systemImage: "macwindow",
-                    title: AppText.localized(english: "App", korean: "앱", japanese: "アプリ", chineseSimplified: "应用"),
-                    subtitle: AppText.localized(english: "Main", korean: "메인", japanese: "メイン", chineseSimplified: "主窗口"),
-                    accentColor: .secondary
+                    systemImage: "house",
+                    title: AppText.home,
+                    subtitle: nil,
+                    accentColor: QuickLatePalette.primary
                 )
             }
             .buttonStyle(.plain)
             .help(AppText.openMainWindow)
 
             Button {
-                toggleCapture()
+                SettingsWindowPresenter.showSettingsWindow()
             } label: {
                 IconPanelButtonLabel(
-                    systemImage: session.isRunning ? "stop.fill" : "play.fill",
-                    title: session.isRunning ? AppText.stop : AppText.start,
-                    subtitle: session.isRunning ? AppText.menuBarRunningTitle : AppText.ready,
-                    accentColor: session.isRunning ? .red : .accentColor,
-                    isSelected: !session.isRunning
+                    systemImage: "gearshape",
+                    title: AppText.settings,
+                    subtitle: nil,
+                    accentColor: QuickLatePalette.primary
                 )
             }
             .buttonStyle(.plain)
-
-            if session.isRunning {
-                Button {
-                    session.isPaused ? session.resume() : session.pause()
-                } label: {
-                    IconPanelButtonLabel(
-                        systemImage: session.isPaused ? "play.fill" : "pause.fill",
-                        title: session.isPaused ? AppText.resume : AppText.pause,
-                        subtitle: session.isPaused ? AppText.paused : AppText.menuBarRunningTitle,
-                        accentColor: session.isPaused ? .accentColor : .orange,
-                        isSelected: session.isPaused
-                    )
-                }
-                .buttonStyle(.plain)
-            }
+            .help(AppText.openSettings)
         }
     }
 
@@ -230,7 +224,7 @@ struct MenuBarStatusView: View {
         if session.isRunning {
             session.stop()
         } else {
-            session.start()
+            session.requestStartFromWorkspace()
         }
     }
 
@@ -261,10 +255,75 @@ private struct ControlSectionHeader: View {
     }
 }
 
+private struct MenuBarAppInfoButton: View {
+    let hasError: Bool
+
+    var body: some View {
+        Image(systemName: hasError ? "exclamationmark.circle.fill" : "info.circle")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(hasError ? QuickLatePalette.critical : QuickLatePalette.inkDeep)
+            .frame(width: 30, height: 30)
+            .background((hasError ? QuickLatePalette.critical : QuickLatePalette.slate).opacity(0.1), in: Circle())
+            .overlay {
+                Circle().strokeBorder((hasError ? QuickLatePalette.critical : QuickLatePalette.hairlineSoft).opacity(0.75), lineWidth: 1)
+            }
+    }
+}
+
+private struct MenuBarAppVersionInfo: View {
+    let errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Label(AppText.versionInfo, systemImage: "number")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(QuickLatePalette.slate)
+                Spacer(minLength: 0)
+                Text(versionText)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(QuickLatePalette.inkDeep)
+                    .lineLimit(1)
+            }
+
+            Divider()
+
+            if let errorMessage, !errorMessage.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(AppText.latestErrorInfo, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(QuickLatePalette.critical)
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(QuickLatePalette.slate)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+            } else {
+                Label(AppText.noErrorInfo, systemImage: "checkmark.circle")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(QuickLatePalette.success)
+            }
+        }
+        .padding(10)
+        .background(QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(QuickLatePalette.hairlineSoft, lineWidth: 1)
+        }
+    }
+
+    private var versionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return "\(version) (\(build))"
+    }
+}
+
 private struct IconPanelButtonLabel: View {
     let systemImage: String
     let title: String
-    let subtitle: String
+    let subtitle: String?
     let accentColor: Color
     var isSelected = false
 
@@ -274,29 +333,31 @@ private struct IconPanelButtonLabel: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(accentColor)
                 .frame(width: 32, height: 32)
-                .background(QuickLatePalette.primarySoft, in: Circle())
+                .background(accentColor.opacity(0.12), in: Circle())
 
             VStack(spacing: 1) {
                 Text(title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(QuickLatePalette.inkDeep)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                    .minimumScaleFactor(0.72)
 
-                Text(subtitle)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(accentColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(QuickLatePalette.slate)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
             }
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, minHeight: 76)
-        .background(isSelected ? QuickLatePalette.primarySoft : QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(isSelected ? accentColor.opacity(0.11) : QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(isSelected ? accentColor.opacity(0.48) : QuickLatePalette.hairlineSoft, lineWidth: 1)
+                .strokeBorder(isSelected ? accentColor.opacity(0.18) : QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
@@ -323,7 +384,7 @@ private struct IconChoiceLabel: View {
         .background(isSelected ? QuickLatePalette.primary : QuickLatePalette.surfaceSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(isSelected ? QuickLatePalette.primaryDeep.opacity(0.7) : QuickLatePalette.hairlineSoft, lineWidth: 1)
+                .strokeBorder(isSelected ? QuickLatePalette.primary.opacity(0.22) : QuickLatePalette.hairlineSoft, lineWidth: 1)
         }
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
